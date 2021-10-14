@@ -9,7 +9,7 @@ provide some functions to create the UI 'objects'.
 
 For example, the following in a file will create a screen looking like:
 
-![](Capture.png)
+![](Capture.PNG)
 
 with the calling code:
 ```sh
