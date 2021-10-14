@@ -9,13 +9,13 @@ provide some functions to create the UI 'objects'.
 
 For example, the following in a file will create a screen looking like:
 
-![](Capture.PNG)
+![sample_picture](https://raw.githubusercontent.com/gmoller/gerg-ui/main/Capture.PNG)
 
 with the calling code:
 ```sh
 let lines = gerg_ui::read_ui_file("screen1.ui");
 let controls = gerg_ui::instantiate_controls(lines);
-gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls);
+gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls), Vec2::new(1920.0, 1080.0);
 ```
 
 ```sh

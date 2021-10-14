@@ -31,6 +31,14 @@ dock_with: frame1.center_right<->this.center_left
 offset: 50;0
 --end--
 
+--picture_box--
+name: frame4
+texture_name: big_frame.png
+size: 300;450
+draw_order: 0.3
+top_left_position: 0;0
+--end--
+
 --label--
 name: label1
 size: 100;50
@@ -59,4 +67,22 @@ font_size: 25
 color: 1;0.937;0 // CANARY YELLOW
 dock_with: frame3.top_left<->this.top_left
 offset: 15;-15
+--end--
+
+--label--
+name: label4
+size: 20;10
+top_left_position: 0;0
+text_string: small text
+font_size: 20
+color: 0.984;0.808;694 // APRICOT
+--end--
+
+--label--
+name: label5
+size: 20;10
+center_position: 0;0
+text_string: small text
+font_size: 20
+color: 0.824;0.412;0.118 // CHOCOLATE
 --end--

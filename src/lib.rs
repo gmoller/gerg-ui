@@ -6,28 +6,29 @@ use bevy::prelude::*;
 #[derive(Default)]
 struct GlobalSettings {
     font_name: String,
-    font_size: f32,
-    color: Color
+    font_size: String,
+    color: String
 }
 
 #[derive(Default)]
 struct Control {
     control_type: ControlType,
     name: String,
-    top_left_position: Vec2,
-    size: Vec2,
+    center_position: String,
+    top_left_position: String,
+    size: String,
     dock_with: String,
-    offset: Vec2,
+    offset: String,
 
     // picture_box
     texture_name: String,
-    draw_order: f32,
+    draw_order: String,
 
     // label
     text_string: String,
     font_name: String,
-    font_size: f32,
-    color: Color,
+    font_size: String,
+    color: String,
 }
 
 pub struct Controls {
@@ -90,7 +91,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
 
         line_number += 1;
         if line.is_empty() { continue; } // skip line
-        if line.starts_with("//") { continue; } // skip line
+        if line.trim().starts_with("//") { continue; } // skip line
 
         match line.as_str() {
             "--global_settings--" => {
@@ -106,8 +107,8 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 read_state = ReadState::Label;
                 control.control_type = ControlType::Label;
                 control.font_name = global_settings.font_name.clone();
-                control.font_size = global_settings.font_size;
-                control.color = global_settings.color;
+                control.font_size = global_settings.font_size.clone();
+                control.color = global_settings.color.clone();
             },
             "--end--" => {
                 match read_state {
@@ -131,36 +132,38 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                     ReadState::GlobalSettings => {
                         match split_str[0] {
                             "font_name" => { global_settings.font_name = get_string(line); },
-                            "font_size" => { global_settings.font_size = get_f32(line); },
-                            "color" => { global_settings.color = get_color(line); },
+                            "font_size" => { global_settings.font_size = get_string(line); },
+                            "color" => { global_settings.color = get_string(line); },
                             _ => { panic!("Unknown field. Line#{}: {}.", line_number, line); }
                         }
                     },
                     ReadState::PictureBox => {
                         match split_str[0] {
                             "name" => { control.name = get_string(line); },
-                            "center_position" => { let center_position = get_vec2(line); control.top_left_position = Vec2::new(center_position.x - control.size.x * 0.5, center_position.y + control.size.y * 0.5) },
-                            "size" => { control.size = get_vec2(line); },
+                            "top_left_position" => { control.top_left_position = get_string(line); },
+                            "center_position" => { control.center_position = get_string(line); },
+                            "size" => { control.size = get_string(line); },
                             "dock_with" => { control.dock_with = get_string(line); },
-                            "offset" => { control.offset = get_vec2(line); },
+                            "offset" => { control.offset = get_string(line); },
 
                             "texture_name" => { control.texture_name = get_string(line); },
-                            "draw_order" => { control.draw_order = get_f32(line); },
+                            "draw_order" => { control.draw_order = get_string(line); },
                             _ => { panic!("Unknown field. Line#{}: {}.", line_number, line); }
                         }
                     },
                     ReadState::Label => {
                         match split_str[0] {
                             "name" => { control.name = get_string(line); },
-                            "top_left_position" => { control.top_left_position = get_vec2(line); },
-                            "size" => { control.size = get_vec2(line); },
+                            "top_left_position" => { control.top_left_position = get_string(line); },
+                            "center_position" => { control.center_position = get_string(line); },
+                            "size" => { control.size = get_string(line); },
                             "dock_with" => { control.dock_with = get_string(line); },
-                            "offset" => { control.offset = get_vec2(line); },
+                            "offset" => { control.offset = get_string(line); },
 
                             "text_string" => { control.text_string = get_string(line); },
                             "font_name" => { control.font_name = get_string(line); },
-                            "font_size" => { control.font_size = get_f32(line); },
-                            "color" => { control.color = get_color(line); },
+                            "font_size" => { control.font_size = get_string(line); },
+                            "color" => { control.color = get_string(line); },
                             _ => { panic!("Unknown field. Line#{}: {}.", line_number, line); }
                         }
                     }
@@ -174,7 +177,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
     return result;
 }
 
-pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, mut materials: ResMut<Assets<ColorMaterial>>, controls: Controls) {
+pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, mut materials: ResMut<Assets<ColorMaterial>>, controls: Controls, screen_size: Vec2) {
 
     let controls_map = &controls.map;
     for (_, control) in controls_map {
@@ -188,9 +191,10 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let material = materials.add(texture_handle.into());
             
                 let top_left_position = calculate_top_left_position(control, &controls);
-                let center_position = Vec3::new(top_left_position.x + control.size.x * 0.5, top_left_position.y - control.size.y * 0.5, control.draw_order);
+                let size = get_vec2(control.size.clone());
+                let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, get_f32(control.draw_order.clone()));
 
-                let bundle = instantiate_sprite_bundle(control.size, center_position, scale, material);
+                let bundle = instantiate_sprite_bundle(size, center_position, scale, material);
                 commands.spawn_bundle(bundle);
             },
             ControlType::Label => {
@@ -199,10 +203,11 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let font_handle: Handle<Font> = asset_server.load(font_path.as_str());
             
                 let mut top_left_position = calculate_top_left_position(control, &controls);
-                top_left_position.x += 1920.0 * 0.5;
-                top_left_position.y = 1080.0 * 0.5 - top_left_position.y;
+                top_left_position.x += screen_size.x * 0.5;
+                top_left_position.y = screen_size.y * 0.5 - top_left_position.y;
+                let size = get_vec2(control.size.clone());
 
-                let bundle = instantiate_textbundle(top_left_position, min_size, control.size, control.text_string.clone(), font_handle, control.font_size, control.color);
+                let bundle = instantiate_textbundle(top_left_position, min_size, size, control.text_string.clone(), font_handle, get_f32(control.font_size.clone()), get_color(control.color.clone()));
                 commands.spawn_bundle(bundle);
             }
         }
@@ -211,34 +216,51 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
 
 fn calculate_top_left_position(control: &Control, controls: &Controls) -> Vec2 {
 
+    let  control_size = get_vec2(control.size.clone());
+    
     if control.dock_with.is_empty() {
-        return control.top_left_position;
+        let top_left_position = control.top_left_position.clone();
+
+        if top_left_position.is_empty() {
+            let center_position = control.center_position.clone();
+
+            if center_position.is_empty() {
+                return Vec2::new(0.0, 0.0);
+            } else {
+                let cp = get_vec2(center_position);
+                let tlp = Vec2::new(cp.x - control_size.x * 0.5, cp.y + control_size.y * 0.5);
+                
+                return tlp;
+            }
+        } else {
+            return get_vec2(top_left_position);
+        }
     }
 
-    let split_str = control.dock_with.split("<->").collect::<Vec<&str>>(); // panel_inner.top_left<->this.top_left
-    let left = split_str[0]; // panel_inner.top_left
-    let right = split_str[1]; // this.top_left
+    let split_str = control.dock_with.split("<->").collect::<Vec<&str>>();
+    let left = split_str[0];
+    let right = split_str[1];
 
     let left_split_str = left.split(".").collect::<Vec<&str>>();
-    let control_to_use_for_docking = left_split_str[0]; // panel_inner
-    let point_on_control_to_anchor_to = left_split_str[1]; // top_left
+    let control_to_use_for_docking = left_split_str[0];
+    let point_on_control_to_anchor_to = left_split_str[1];
     let control_to_dock_to = controls.get_by_name(control_to_use_for_docking.to_string());
+    let  control_to_dock_to_size = get_vec2(control_to_dock_to.size.clone());
 
     let parent_top_left_position = calculate_top_left_position(control_to_dock_to, controls);
-    //println!("Control: {}: parent_top_left_position: {}", control.name, parent_top_left_position);
 
     let pixel1 = match point_on_control_to_anchor_to {
         "top_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y),
-        "center_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y - control_to_dock_to.size.y * 0.5),
-        "bottom_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y - control_to_dock_to.size.y),
+        "center_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y - control_to_dock_to_size.y * 0.5),
+        "bottom_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y - control_to_dock_to_size.y),
         
-        "top_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to.size.x * 0.5, parent_top_left_position.y),
-        "center_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to.size.x * 0.5, parent_top_left_position.y - control_to_dock_to.size.y * 0.5),
-        "bottom_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to.size.x * 0.5, parent_top_left_position.y - control_to_dock_to.size.y),
+        "top_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x * 0.5, parent_top_left_position.y),
+        "center_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x * 0.5, parent_top_left_position.y - control_to_dock_to_size.y * 0.5),
+        "bottom_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x * 0.5, parent_top_left_position.y - control_to_dock_to_size.y),
 
-        "top_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to.size.x, parent_top_left_position.y),
-        "center_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to.size.x, parent_top_left_position.y - control_to_dock_to.size.y * 0.5),
-        "bottom_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to.size.x, parent_top_left_position.y - control_to_dock_to.size.y),
+        "top_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x, parent_top_left_position.y),
+        "center_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x, parent_top_left_position.y - control_to_dock_to_size.y * 0.5),
+        "bottom_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x, parent_top_left_position.y - control_to_dock_to_size.y),
 
         _ => panic!("{} is not implemented.", point_on_control_to_anchor_to)
     };
@@ -249,29 +271,28 @@ fn calculate_top_left_position(control: &Control, controls: &Controls) -> Vec2 {
 
     let pixel2 = match point_on_this_control_to_anchor_to {
         "top_left" => Vec2::new(pixel1.x, pixel1.y),
-        "center_left" => Vec2::new(pixel1.x, pixel1.y + control.size.y * 0.5),
-        "bottom_left" => Vec2::new(pixel1.x, pixel1.y + control.size.y),
+        "center_left" => Vec2::new(pixel1.x, pixel1.y + control_size.y * 0.5),
+        "bottom_left" => Vec2::new(pixel1.x, pixel1.y + control_size.y),
 
-        "top_middle" => Vec2::new(pixel1.x - control.size.x * 0.5, pixel1.y),
-        "center_middle" => Vec2::new(pixel1.x - control.size.x * 0.5, pixel1.y + control.size.y * 0.5),
-        "bottom_middle" => Vec2::new(pixel1.x - control.size.x * 0.5, pixel1.y + control.size.y),
+        "top_middle" => Vec2::new(pixel1.x - control_size.x * 0.5, pixel1.y),
+        "center_middle" => Vec2::new(pixel1.x - control_size.x * 0.5, pixel1.y + control_size.y * 0.5),
+        "bottom_middle" => Vec2::new(pixel1.x - control_size.x * 0.5, pixel1.y + control_size.y),
 
-        "top_right" => Vec2::new(pixel1.x - control.size.x, pixel1.y),
-        "center_right" => Vec2::new(pixel1.x - control.size.x, pixel1.y + control.size.y * 0.5),
-        "bottom_right" => Vec2::new(pixel1.x - control.size.x, pixel1.y + control.size.y),
+        "top_right" => Vec2::new(pixel1.x - control_size.x, pixel1.y),
+        "center_right" => Vec2::new(pixel1.x - control_size.x, pixel1.y + control_size.y * 0.5),
+        "bottom_right" => Vec2::new(pixel1.x - control_size.x, pixel1.y + control_size.y),
 
         _ => panic!("{} is not implemented.", point_on_this_control_to_anchor_to)
     };
     //println!("Pixel2: {}", result_pixel);
 
-    let result_pixel = pixel2 + control.offset;
+    let result_pixel = pixel2 + get_vec2(control.offset.clone());
 
     return result_pixel;
 }
 
 fn get_string(str: String) -> String {
-    //let split_str = str.split(':').collect::<Vec<&str>>();
-    //let right_side_of_colon = split_str[1].trim();
+
     let right_side_of_colon = get_right_side_of_colon(str);
     let result = right_side_of_colon.to_string();
 
@@ -279,15 +300,19 @@ fn get_string(str: String) -> String {
 }
 
 fn get_f32(str: String) -> f32 {
-    let right_side_of_colon = get_right_side_of_colon(str);
-    let result = right_side_of_colon.parse::<f32>().unwrap();
+
+    let result = str.parse::<f32>().unwrap();
 
     return result;
 }
 
 fn get_vec2(str: String) -> Vec2 {
-    let right_side_of_colon = get_right_side_of_colon(str);
-    let split_str3 = right_side_of_colon.split(';').collect::<Vec<&str>>();
+    
+    if str.is_empty() {
+        return Vec2::new(0.0, 0.0);
+    }
+
+    let split_str3 = str.split(';').collect::<Vec<&str>>();
     let value1 = split_str3[0].trim();
     let value2 = split_str3[1].trim();
     let result = Vec2::new(value1.parse::<f32>().unwrap(), value2.parse::<f32>().unwrap());
@@ -296,8 +321,8 @@ fn get_vec2(str: String) -> Vec2 {
 }
 
 fn get_color(str: String) -> Color {
-    let right_side_of_colon = get_right_side_of_colon(str);
-    let split_str3 = right_side_of_colon.split(';').collect::<Vec<&str>>();
+
+    let split_str3 = str.split(';').collect::<Vec<&str>>();
     let value1 = split_str3[0].trim(); // red
     let value2 = split_str3[1].trim(); // green
     let value3 = split_str3[2].trim(); // blue
@@ -312,6 +337,7 @@ fn get_color(str: String) -> Color {
 }
 
 fn get_right_side_of_colon(str: String) -> String {
+    
     let split_str1 = str.split("//").collect::<Vec<&str>>();
     let split_str2 = split_str1[0].split(':').collect::<Vec<&str>>();
     let right_side_of_colon = split_str2[1].trim();
