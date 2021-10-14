@@ -29,7 +29,7 @@ color: 1;1;1 // WHITE
 name: frame1
 texture_name: big_frame.png
 size: 300;450
-center_position: -800;300 // middle of screen
+center_position: -800;300
 draw_order: 0
 --end--
 
