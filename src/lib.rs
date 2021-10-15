@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use phf::phf_map;
 use bevy::prelude::*;
 
 #[derive(Default)]
@@ -207,7 +208,7 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 top_left_position.y = screen_size.y * 0.5 - top_left_position.y;
                 let size = get_vec2(control.size.clone());
 
-                let bundle = instantiate_textbundle(top_left_position, min_size, size, control.text_string.clone(), font_handle, get_f32(control.font_size.clone()), get_color(control.color.clone()));
+                let bundle = instantiate_textbundle(top_left_position, min_size, size, control.text_string.clone(), font_handle, get_f32(control.font_size.clone()), parse_color(control.color.clone()));
                 commands.spawn_bundle(bundle);
             }
         }
@@ -320,20 +321,56 @@ fn get_vec2(str: String) -> Vec2 {
     return result;
 }
 
-fn get_color(str: String) -> Color {
+static COLORS: phf::Map<&'static str, Color> = phf_map! {
+    "american rose" => Color::Rgba { red: 1.0, green: 0.012, blue: 0.243, alpha: 1.0 },
+    "apricot" => Color::Rgba { red: 0.984, green: 0.808, blue: 0.694, alpha: 1.0 },
+    "aqua" => Color::Rgba { red: 0.0, green: 1.0, blue: 1.0, alpha: 1.0 },
+    "black" => Color::Rgba { red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0 },
+    "blue" => Color::Rgba { red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0 },
+    "canary yellow" => Color::Rgba { red: 1.0, green: 0.937, blue: 0.0, alpha: 1.0 },
+    "chocolate" => Color::Rgba { red: 0.824, green: 0.412, blue: 0.118, alpha: 1.0 },
+    "cornflower blue" => Color::Rgba { red: 0.392, green: 0.584, blue: 0.929, alpha: 1.0 },
+    "cyan" => Color::Rgba { red: 0.0, green: 1.0, blue: 1.0, alpha: 1.0 },
+    "fuchsia" => Color::Rgba { red: 1.0, green: 0.0, blue: 1.0, alpha: 1.0 },
+    "gray" => Color::Rgba { red: 0.502, green: 0.502, blue: 0.502, alpha: 1.0 },
+    "green" => Color::Rgba { red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0 },
+    "magenta" => Color::Rgba { red: 1.0, green: 0.0, blue: 1.0, alpha: 1.0 },
+    "maroon" => Color::Rgba { red: 0.502, green: 0.0, blue: 0.0, alpha: 1.0 },
+    "navy blue" => Color::Rgba { red: 0.0, green: 0.0, blue: 0.502, alpha: 1.0 },
+    "olive" => Color::Rgba { red: 0.502, green: 0.502, blue: 0.0, alpha: 1.0 },
+    "purple" => Color::Rgba { red: 0.502, green: 0.0, blue: 0.502, alpha: 1.0 },
+    "red" => Color::Rgba { red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 },
+    "silver" => Color::Rgba { red: 0.753, green: 0.753, blue: 0.753, alpha: 1.0 },
+    "teal" => Color::Rgba { red: 0.0, green: 0.502, blue: 0.502, alpha: 1.0 },
+    "white" => Color::Rgba { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 },
+    "yellow" => Color::Rgba { red: 1.0, green: 1.0, blue: 0.0, alpha: 1.0 },
+};
 
-    let split_str3 = str.split(';').collect::<Vec<&str>>();
-    let value1 = split_str3[0].trim(); // red
-    let value2 = split_str3[1].trim(); // green
-    let value3 = split_str3[2].trim(); // blue
-    let mut value4 = "1.0";
-    if split_str3.len() == 4 {
-        value4 = split_str3[3].trim();
-    }
+fn parse_color(str: String) -> Color {
+
+    let trimmed_string = str.trim();
+
+    let split_str3 = trimmed_string.split(';').collect::<Vec<&str>>();
+    if split_str3.len() >= 3 {
+        let value1 = split_str3[0].trim(); // red
+        let value2 = split_str3[1].trim(); // green
+        let value3 = split_str3[2].trim(); // blue
+        let mut value4 = "1.0";
+        if split_str3.len() == 4 {
+            value4 = split_str3[3].trim(); // alpha
+        }
+        
+        let result = Color::Rgba { red: value1.parse::<f32>().unwrap(), green: value2.parse::<f32>().unwrap(), blue: value3.parse::<f32>().unwrap(), alpha: value4.parse::<f32>().unwrap() };
     
-    let result = Color::Rgba { red: value1.parse::<f32>().unwrap(), green: value2.parse::<f32>().unwrap(), blue: value3.parse::<f32>().unwrap(), alpha: value4.parse::<f32>().unwrap() };
+        return result;
+    } else {
+        let col = COLORS.get(split_str3[0].to_lowercase().as_str()).cloned();
 
-    return result;
+        match col {
+            Some(c) => return c,
+            None => panic!("Color [{}] unknown.", str)
+        }
+    }
 }
 
 fn get_right_side_of_colon(str: String) -> String {

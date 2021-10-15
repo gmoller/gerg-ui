@@ -1,6 +1,6 @@
 [package]
 name = "gerg_ui"
-version = "0.1.4"
+version = "0.1.5"
 authors = [ "Greg Moller <greg.moller@gmail.com>" ]
 edition = "2018"
 description = "A little wrapper I've written for creating UI screens from files for the BevyEngine."
@@ -13,3 +13,4 @@ keywords = [ "gamedev", "Bevy" ]
 
 [dependencies]
 bevy = "0.5"
+phf = { version = "0.10.0", features = ["macros"] }
