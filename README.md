@@ -47,7 +47,6 @@ name: frame3
 texture_name: big_frame.png
 size: 300;450
 draw_order: 0.2
-center_position: 350;0
 dock_with: frame1.center_right<->this.center_left
 offset: 50;0
 --end--
