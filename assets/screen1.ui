@@ -9,10 +9,9 @@ color: White
 name: frame1
 texture_name: big_frame.png
 size: 300;450
-center_position: -800;300
 draw_order: 0
-//dock_with: screen.top_left<->this.top_left
-//offset: 10;-10
+dock_with: screen.top_left<->this.top_left
+offset: 10;-10
 --end--
 
 --picture_box--
@@ -75,17 +74,17 @@ offset: 15;-15
 --label--
 name: label4
 size: 20;10
-top_left_position: 0;0
 text_string: small text
 font_size: 20
 color: APRICOT
+dock_with: screen.center_middle<->this.top_left
 --end--
 
 --label--
 name: label5
 size: 20;10
-center_position: 0;0
 text_string: small text
 font_size: 20
 color: CHOCOLATE
+dock_with: screen.center_middle<->this.center_middle
 --end--

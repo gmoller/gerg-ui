@@ -92,7 +92,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
         if line.is_empty() { continue; } // skip line
         if line.trim().starts_with("//") { continue; } // skip line
 
-        match line.as_str() {
+        match line.to_lowercase().as_str() {
             "--global_settings--" => {
                 read_state = ReadState::GlobalSettings;
                 global_settings = GlobalSettings { ..Default::default() };
@@ -128,7 +128,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 match read_state {
                     ReadState::None => { panic!("Not in a valid state. Line #{}: {}.", line_number, line); },
                     ReadState::GlobalSettings => {
-                        match field_name {
+                        match field_name.to_lowercase().as_str() {
                             "font_name" => { global_settings.font_name = field_value; },
                             "font_size" => { global_settings.font_size = field_value; },
                             "color" => { global_settings.color = field_value; },
@@ -136,7 +136,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                         }
                     },
                     ReadState::Control => {
-                        match field_name {
+                        match field_name.to_lowercase().as_str() {
                             "name" => { control.name = field_value; },
                             "top_left_position" => { control.top_left_position = field_value; },
                             "center_position" => { control.center_position = field_value; },
@@ -178,7 +178,7 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let texture_handle = asset_server.load(material_path);
                 let material = materials.add(texture_handle.into());
             
-                let top_left_position = calculate_top_left_position(control, &controls);
+                let top_left_position = calculate_top_left_position(control, &controls, screen_size);
                 let size = parse_vec2(control.size.clone());
                 let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.draw_order.clone()));
 
@@ -192,7 +192,7 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let font_path = format!("fonts/{}", control.font_name);
                 let font_handle: Handle<Font> = asset_server.load(font_path.as_str());
             
-                let mut top_left_position = calculate_top_left_position(control, &controls);
+                let mut top_left_position = calculate_top_left_position(control, &controls, screen_size);
                 top_left_position.x += screen_size.x * 0.5;
                 top_left_position.y = screen_size.y * 0.5 - top_left_position.y;
                 let size = parse_vec2(control.size.clone());
@@ -210,7 +210,7 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
     return results;
 }
 
-fn calculate_top_left_position(control: &Control, controls: &Controls) -> Vec2 {
+fn calculate_top_left_position(control: &Control, controls: &Controls, screen_size: Vec2) -> Vec2 {
 
     let  control_size = parse_vec2(control.size.clone());
     
@@ -234,38 +234,20 @@ fn calculate_top_left_position(control: &Control, controls: &Controls) -> Vec2 {
     }
 
     let split_str = control.dock_with.split("<->").collect::<Vec<&str>>();
-    let left = split_str[0];
-    let right = split_str[1];
+    let dock_this = split_str[1];
+    let dock_to = split_str[0];
 
-    let left_split_str = left.split(".").collect::<Vec<&str>>();
-    let control_to_use_for_docking = left_split_str[0];
-    let point_on_control_to_anchor_to = left_split_str[1];
-    let control_to_dock_to = controls.get_by_name(control_to_use_for_docking.to_string());
-    let  control_to_dock_to_size = parse_vec2(control_to_dock_to.size.clone());
+    let split = dock_to.split(".").collect::<Vec<&str>>();
+    let control_to_use_for_docking = split[0];
+    let point_on_control_to_anchor_to = split[1];
 
-    let parent_top_left_position = calculate_top_left_position(control_to_dock_to, controls);
-
-    let pixel1 = match point_on_control_to_anchor_to {
-        "top_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y),
-        "center_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y - control_to_dock_to_size.y * 0.5),
-        "bottom_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y - control_to_dock_to_size.y),
-        
-        "top_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x * 0.5, parent_top_left_position.y),
-        "center_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x * 0.5, parent_top_left_position.y - control_to_dock_to_size.y * 0.5),
-        "bottom_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x * 0.5, parent_top_left_position.y - control_to_dock_to_size.y),
-
-        "top_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x, parent_top_left_position.y),
-        "center_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x, parent_top_left_position.y - control_to_dock_to_size.y * 0.5),
-        "bottom_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x, parent_top_left_position.y - control_to_dock_to_size.y),
-
-        _ => panic!("{} is not implemented.", point_on_control_to_anchor_to)
-    };
+    let pixel1 = get_point_to_dock_to(controls, control_to_use_for_docking, point_on_control_to_anchor_to, screen_size);
     //println!("Pixel1: {}", pixel1);
 
-    let right_split_str = right.split(".").collect::<Vec<&str>>();
-    let point_on_this_control_to_anchor_to = right_split_str[1];
+    let split = dock_this.split(".").collect::<Vec<&str>>();
+    let point_on_this_control_to_anchor_to = split[1];
 
-    let pixel2 = match point_on_this_control_to_anchor_to {
+    let pixel2 = match point_on_this_control_to_anchor_to.to_lowercase().as_str() {
         "top_left" => Vec2::new(pixel1.x, pixel1.y),
         "center_left" => Vec2::new(pixel1.x, pixel1.y + control_size.y * 0.5),
         "bottom_left" => Vec2::new(pixel1.x, pixel1.y + control_size.y),
@@ -285,6 +267,50 @@ fn calculate_top_left_position(control: &Control, controls: &Controls) -> Vec2 {
     let result_pixel = pixel2 + parse_vec2(control.offset.clone());
 
     return result_pixel;
+}
+
+fn get_point_to_dock_to(controls: &Controls, control_to_use_for_docking: &str, point_on_control_to_anchor_to: &str, screen_size: Vec2) -> Vec2 {
+
+    if  control_to_use_for_docking.to_lowercase() == "screen" {
+        let p = match point_on_control_to_anchor_to.to_lowercase().as_str() {
+            "top_left" => Vec2::new(-screen_size.x * 0.5, screen_size.y * 0.5),
+            "center_left" => Vec2::new(-screen_size.x * 0.5, 0.0),
+            "bottom_left" => Vec2::new(-screen_size.x * 0.5, -screen_size.y * 0.5),
+        
+            "top_middle" => Vec2::new(0.0, screen_size.y * 0.5),
+            "center_middle" => Vec2::new(0.0, 0.0),
+            "bottom_middle" => Vec2::new(0.0, -screen_size.y * 0.5),
+    
+            "top_right" => Vec2::new(screen_size.x * 0.5, screen_size.y * 0.5),
+            "center_right" => Vec2::new(screen_size.x * 0.5, 0.0),
+            "bottom_right" => Vec2::new(screen_size.x * 0.5, -screen_size.y * 0.5),
+    
+            _ => panic!("{} is not implemented.", point_on_control_to_anchor_to)
+        };
+    
+        return p;
+    }
+
+    let control_to_dock_to = controls.get_by_name(control_to_use_for_docking.to_string());
+    let control_to_dock_to_size = parse_vec2(control_to_dock_to.size.clone());
+    let parent_top_left_position = calculate_top_left_position(control_to_dock_to, controls, screen_size);
+    let p = match point_on_control_to_anchor_to.to_lowercase().as_str() {
+        "top_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y),
+        "center_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y - control_to_dock_to_size.y * 0.5),
+        "bottom_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y - control_to_dock_to_size.y),
+    
+        "top_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x * 0.5, parent_top_left_position.y),
+        "center_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x * 0.5, parent_top_left_position.y - control_to_dock_to_size.y * 0.5),
+        "bottom_middle" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x * 0.5, parent_top_left_position.y - control_to_dock_to_size.y),
+
+        "top_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x, parent_top_left_position.y),
+        "center_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x, parent_top_left_position.y - control_to_dock_to_size.y * 0.5),
+        "bottom_right" => Vec2::new(parent_top_left_position.x + control_to_dock_to_size.x, parent_top_left_position.y - control_to_dock_to_size.y),
+
+        _ => panic!("{} is not implemented.", point_on_control_to_anchor_to)
+    };
+
+    return p;
 }
 
 fn get_string(str: String) -> String {
