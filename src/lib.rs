@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use phf::phf_map;
 use bevy::prelude::*;
+
+use crate::colors::parse_color;
+
+mod colors;
 
 #[derive(Default)]
 struct GlobalSettings {
@@ -15,21 +18,7 @@ struct GlobalSettings {
 struct Control {
     control_type: ControlType,
     name: String,
-    center_position: String,
-    top_left_position: String,
-    size: String,
-    dock_with: String,
-    offset: String,
-
-    // picture_box
-    texture_name: String,
-    draw_order: String,
-
-    // label
-    text_string: String,
-    font_name: String,
-    font_size: String,
-    color: String,
+    fields: Fields
 }
 
 pub struct Controls {
@@ -37,9 +26,28 @@ pub struct Controls {
 }
 impl Controls {
     fn get_by_name(&self, name: String) -> &Control {
-        let foo = self.map.get(&name);
-        let result = match foo {
+        let item = self.map.get(&name);
+        let result = match item {
             None => panic!("Control with name [{}] not found.", name),
+            Some(control) => control
+        };
+
+        return result;
+    }
+}
+
+#[derive(Default)]
+struct Fields {
+    map: HashMap<String, String>
+}
+impl Fields {
+    fn insert(&mut self, key: String, value: String) {
+        self.map.insert(key, value);
+    }
+    fn get_by_name(&self, name: &str) -> &String {
+        let item = self.map.get(name);
+        let result = match item {
+            None => panic!("Field [{}] not found in control fields.", name),
             Some(control) => control
         };
 
@@ -77,6 +85,13 @@ pub fn read_ui_file(ui_filename: &str) -> Vec<String> {
     return list;
 }
 
+pub fn instantiate_controls_from_file(filename: &str) -> Controls {
+    let lines = read_ui_file(filename);
+    let controls = instantiate_controls(lines);
+
+    return controls;
+}
+
 pub fn instantiate_controls(lines: Vec<String>) -> Controls {
 
     let mut controls = HashMap::new();
@@ -85,6 +100,8 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
     let mut line_number = 0;
     let mut global_settings = GlobalSettings { ..Default::default() };
     let mut control = Control { ..Default::default() };
+    control.fields.insert("dock_with".to_string(), "".to_string());
+    control.fields.insert("offset".to_string(), "0;0".to_string());
 
     for line in lines {
 
@@ -105,9 +122,9 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
             "--label--" => {
                 read_state = ReadState::Control;
                 control.control_type = ControlType::Label;
-                control.font_name = global_settings.font_name.clone();
-                control.font_size = global_settings.font_size.clone();
-                control.color = global_settings.color.clone();
+                control.fields.insert("font_name".to_string(), global_settings.font_name.clone());
+                control.fields.insert("font_size".to_string(), global_settings.font_size.clone());
+                control.fields.insert("color".to_string(), global_settings.color.clone());
             },
             "--end--" => {
                 match read_state {
@@ -119,10 +136,12 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 }
                 read_state = ReadState::None;
                 control = Control { ..Default::default() };
+                control.fields.insert("dock_with".to_string(), "".to_string());
+                control.fields.insert("offset".to_string(), "0;0".to_string());
             },
             _ => {
-                let split_str = line.split(':').collect::<Vec<&str>>();
-                let field_name = split_str[0];
+                let split = line.split(':').collect::<Vec<&str>>();
+                let field_name = split[0].to_lowercase();
                 let field_value = get_string(line.clone());
 
                 match read_state {
@@ -136,24 +155,12 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                         }
                     },
                     ReadState::Control => {
-                        match field_name.to_lowercase().as_str() {
-                            "name" => { control.name = field_value; },
-                            "top_left_position" => { control.top_left_position = field_value; },
-                            "center_position" => { control.center_position = field_value; },
-                            "size" => { control.size = field_value; },
-                            "dock_with" => { control.dock_with = field_value; },
-                            "offset" => { control.offset = field_value; },
-
-                            "texture_name" => { control.texture_name = field_value; },
-                            "draw_order" => { control.draw_order = field_value; },
-
-                            "text_string" => { control.text_string = field_value; },
-                            "font_name" => { control.font_name = field_value; },
-                            "font_size" => { control.font_size = field_value; },
-                            "color" => { control.color = field_value; },
-
-                            _ => { panic!("Unknown field. Line#{}: {}.", line_number, line); }
+                        if field_name == "name" {
+                            control.name = field_value;
                         }
+
+                        let field_value = get_string(line.clone());
+                        control.fields.insert(field_name, field_value);
                     }
                 }
             }
@@ -171,16 +178,18 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
     let controls_map = &controls.map;
     for (_, control) in controls_map {
 
+        let size = parse_vec2(control.fields.get_by_name("size"));
+        let mut top_left_position = calculate_top_left_position(control, &controls, screen_size);
+
         match control.control_type {
             ControlType::PictureBox => {
                 let scale = Vec3::new(1.0, 1.0, 1.0);
-                let material_path = control.texture_name.as_str();
-                let texture_handle = asset_server.load(material_path);
+                let material_path = control.fields.get_by_name("texture_name");
+                let texture_handle = asset_server.load(material_path.as_str());
                 let material = materials.add(texture_handle.into());
             
-                let top_left_position = calculate_top_left_position(control, &controls, screen_size);
-                let size = parse_vec2(control.size.clone());
-                let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.draw_order.clone()));
+                let draw_order = control.fields.get_by_name("draw_order");
+                let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(draw_order));
 
                 let bundle = instantiate_sprite_bundle(size, center_position, scale, material);
                 let entity = commands.spawn_bundle(bundle).id();
@@ -189,15 +198,16 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
             },
             ControlType::Label => {
                 let min_size = Vec2::new(0.0, 0.0);
-                let font_path = format!("fonts/{}", control.font_name);
+                let font_path = format!("fonts/{}", control.fields.get_by_name("font_name"));
                 let font_handle: Handle<Font> = asset_server.load(font_path.as_str());
             
-                let mut top_left_position = calculate_top_left_position(control, &controls, screen_size);
                 top_left_position.x += screen_size.x * 0.5;
                 top_left_position.y = screen_size.y * 0.5 - top_left_position.y;
-                let size = parse_vec2(control.size.clone());
+                let text = control.fields.get_by_name("text_string");
+                let font_size = parse_f32(control.fields.get_by_name("font_size"));
+                let color = parse_color(control.fields.get_by_name("color"));
 
-                let bundle = instantiate_textbundle(top_left_position, min_size, size, control.text_string.clone(), font_handle, parse_f32(control.font_size.clone()), parse_color(control.color.clone()));
+                let bundle = instantiate_textbundle(top_left_position, min_size, size, text, font_handle, font_size, color);
                 let entity = commands.spawn_bundle(bundle).id();
 
                 results.push(entity);
@@ -212,30 +222,31 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
 
 fn calculate_top_left_position(control: &Control, controls: &Controls, screen_size: Vec2) -> Vec2 {
 
-    let  control_size = parse_vec2(control.size.clone());
+    let control_size = parse_vec2(control.fields.get_by_name("size"));
     
-    if control.dock_with.is_empty() {
-        let top_left_position = control.top_left_position.clone();
+    let control_dock_with = control.fields.get_by_name("dock_with");
+    if control_dock_with.is_empty() {
+        let top_left_position = control.fields.get_by_name("top_left_position");
 
         if top_left_position.is_empty() {
-            let center_position = control.center_position.clone();
+            let center_position = control.fields.get_by_name("center_position");
 
             if center_position.is_empty() {
                 return Vec2::new(0.0, 0.0);
             } else {
-                let cp = parse_vec2(center_position);
+                let cp = parse_vec2(&center_position);
                 let tlp = Vec2::new(cp.x - control_size.x * 0.5, cp.y + control_size.y * 0.5);
                 
                 return tlp;
             }
         } else {
-            return parse_vec2(top_left_position);
+            return parse_vec2(&top_left_position);
         }
     }
 
-    let split_str = control.dock_with.split("<->").collect::<Vec<&str>>();
-    let dock_this = split_str[1];
-    let dock_to = split_str[0];
+    let split = control_dock_with.split("<->").collect::<Vec<&str>>();
+    let dock_this = split[1];
+    let dock_to = split[0];
 
     let split = dock_to.split(".").collect::<Vec<&str>>();
     let control_to_use_for_docking = split[0];
@@ -264,14 +275,15 @@ fn calculate_top_left_position(control: &Control, controls: &Controls, screen_si
     };
     //println!("Pixel2: {}", result_pixel);
 
-    let result_pixel = pixel2 + parse_vec2(control.offset.clone());
+    let offset = control.fields.get_by_name("offset");
+    let result_pixel = pixel2 + parse_vec2(offset);
 
     return result_pixel;
 }
 
 fn get_point_to_dock_to(controls: &Controls, control_to_use_for_docking: &str, point_on_control_to_anchor_to: &str, screen_size: Vec2) -> Vec2 {
 
-    if  control_to_use_for_docking.to_lowercase() == "screen" {
+    if control_to_use_for_docking.to_lowercase() == "screen" {
         let p = match point_on_control_to_anchor_to.to_lowercase().as_str() {
             "top_left" => Vec2::new(-screen_size.x * 0.5, screen_size.y * 0.5),
             "center_left" => Vec2::new(-screen_size.x * 0.5, 0.0),
@@ -292,7 +304,7 @@ fn get_point_to_dock_to(controls: &Controls, control_to_use_for_docking: &str, p
     }
 
     let control_to_dock_to = controls.get_by_name(control_to_use_for_docking.to_string());
-    let control_to_dock_to_size = parse_vec2(control_to_dock_to.size.clone());
+    let control_to_dock_to_size = parse_vec2(control_to_dock_to.fields.get_by_name("size"));
     let parent_top_left_position = calculate_top_left_position(control_to_dock_to, controls, screen_size);
     let p = match point_on_control_to_anchor_to.to_lowercase().as_str() {
         "top_left" => Vec2::new(parent_top_left_position.x, parent_top_left_position.y),
@@ -313,92 +325,40 @@ fn get_point_to_dock_to(controls: &Controls, control_to_use_for_docking: &str, p
     return p;
 }
 
-fn get_string(str: String) -> String {
+fn get_string(s: String) -> String {
 
-    let right_side_of_colon = get_right_side_of_colon(str);
+    let right_side_of_colon = get_right_side_of_colon(s);
     let result = right_side_of_colon.to_string();
-
-    return result
-}
-
-fn parse_f32(str: String) -> f32 {
-
-    let result = str.parse::<f32>().unwrap();
 
     return result;
 }
 
-fn parse_vec2(str: String) -> Vec2 {
+fn parse_f32(s: &String) -> f32 {
+
+    let result = s.parse::<f32>().unwrap();
+
+    return result;
+}
+
+fn parse_vec2(s: &String) -> Vec2 {
     
-    if str.is_empty() {
+    if s.is_empty() {
         return Vec2::new(0.0, 0.0);
     }
 
-    let split_str3 = str.split(';').collect::<Vec<&str>>();
-    let value1 = split_str3[0].trim();
-    let value2 = split_str3[1].trim();
+    let split = s.split(';').collect::<Vec<&str>>();
+    let value1 = split[0].trim();
+    let value2 = split[1].trim();
     let result = Vec2::new(value1.parse::<f32>().unwrap(), value2.parse::<f32>().unwrap());
 
     return result;
 }
 
-static COLORS: phf::Map<&'static str, Color> = phf_map! {
-    "american rose" => Color::Rgba { red: 1.0, green: 0.012, blue: 0.243, alpha: 1.0 },
-    "apricot" => Color::Rgba { red: 0.984, green: 0.808, blue: 0.694, alpha: 1.0 },
-    "aqua" => Color::Rgba { red: 0.0, green: 1.0, blue: 1.0, alpha: 1.0 },
-    "black" => Color::Rgba { red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0 },
-    "blue" => Color::Rgba { red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0 },
-    "canary yellow" => Color::Rgba { red: 1.0, green: 0.937, blue: 0.0, alpha: 1.0 },
-    "chocolate" => Color::Rgba { red: 0.824, green: 0.412, blue: 0.118, alpha: 1.0 },
-    "cornflower blue" => Color::Rgba { red: 0.392, green: 0.584, blue: 0.929, alpha: 1.0 },
-    "cyan" => Color::Rgba { red: 0.0, green: 1.0, blue: 1.0, alpha: 1.0 },
-    "fuchsia" => Color::Rgba { red: 1.0, green: 0.0, blue: 1.0, alpha: 1.0 },
-    "gray" => Color::Rgba { red: 0.502, green: 0.502, blue: 0.502, alpha: 1.0 },
-    "green" => Color::Rgba { red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0 },
-    "magenta" => Color::Rgba { red: 1.0, green: 0.0, blue: 1.0, alpha: 1.0 },
-    "maroon" => Color::Rgba { red: 0.502, green: 0.0, blue: 0.0, alpha: 1.0 },
-    "navy blue" => Color::Rgba { red: 0.0, green: 0.0, blue: 0.502, alpha: 1.0 },
-    "olive" => Color::Rgba { red: 0.502, green: 0.502, blue: 0.0, alpha: 1.0 },
-    "purple" => Color::Rgba { red: 0.502, green: 0.0, blue: 0.502, alpha: 1.0 },
-    "red" => Color::Rgba { red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 },
-    "silver" => Color::Rgba { red: 0.753, green: 0.753, blue: 0.753, alpha: 1.0 },
-    "teal" => Color::Rgba { red: 0.0, green: 0.502, blue: 0.502, alpha: 1.0 },
-    "white" => Color::Rgba { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 },
-    "yellow" => Color::Rgba { red: 1.0, green: 1.0, blue: 0.0, alpha: 1.0 },
-};
-
-fn parse_color(str: String) -> Color {
-
-    let trimmed_string = str.trim();
-
-    let split_str3 = trimmed_string.split(';').collect::<Vec<&str>>();
-    if split_str3.len() >= 3 {
-        let value1 = split_str3[0].trim(); // red
-        let value2 = split_str3[1].trim(); // green
-        let value3 = split_str3[2].trim(); // blue
-        let mut value4 = "1.0";
-        if split_str3.len() == 4 {
-            value4 = split_str3[3].trim(); // alpha
-        }
-        
-        let result = Color::Rgba { red: value1.parse::<f32>().unwrap(), green: value2.parse::<f32>().unwrap(), blue: value3.parse::<f32>().unwrap(), alpha: value4.parse::<f32>().unwrap() };
+fn get_right_side_of_colon(s: String) -> String {
     
-        return result;
-    } else {
-        let col = COLORS.get(split_str3[0].to_lowercase().as_str()).cloned();
-
-        match col {
-            Some(c) => return c,
-            None => panic!("Color [{}] unknown.", str)
-        }
-    }
-}
-
-fn get_right_side_of_colon(str: String) -> String {
-    
-    let split_str1 = str.split("//").collect::<Vec<&str>>();
-    let split_str2 = split_str1[0].split(':').collect::<Vec<&str>>();
-    let right_side_of_colon = split_str2[1].trim();
+    let split = s.split("//").collect::<Vec<&str>>();
+    let split = split[0].split(':').collect::<Vec<&str>>();
+    let right_side_of_colon = split[1].trim();
 
     return right_side_of_colon.to_string();
 }
@@ -431,7 +391,7 @@ fn instantiate_textbundle(
     top_left_position: Vec2,
     min_size: Vec2,
     max_size: Vec2,
-    text: String,
+    text: &String,
     font_handle: Handle<Font>,
     font_size: f32,
     color: Color

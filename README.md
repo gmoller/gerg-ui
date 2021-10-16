@@ -17,12 +17,18 @@ let lines = gerg_ui::read_ui_file("screen1.ui");
 let controls = gerg_ui::instantiate_controls(lines);
 let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls), Vec2::new(1920.0, 1080.0);
 ```
+or:
+```sh
+let controls = gerg_ui::instantiate_controls_from_file("screen1.ui");
+let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls), Vec2::new(1920.0, 1080.0);
+```
 
 ```sh
 --global_settings--
 font_name: CrimsonText-Regular.ttf
 font_size: 30
-color: 1;1;1 // WHITE
+//color: 1;1;1
+color: White
 --end--
 
 --picture_box--
@@ -56,7 +62,7 @@ name: label1
 size: 100;50
 text_string: Test1
 font_size: 50
-color: 0;1;1 // CYAN
+color: CYAN
 dock_with: frame2.top_left<->this.top_left
 offset: 15;-15
 --end--
@@ -67,7 +73,7 @@ size: 100;50
 text_string: Test2
 font_name: CrimsonText-Bold.ttf
 font_size: 50
-color: 1;0.012;0.243 // AMERICAN ROSE
+color: AMERICAN ROSE
 dock_with: label1.bottom_left<->this.top_left
 --end--
 
@@ -76,7 +82,7 @@ name: label3
 size: 270;420
 text_string: How great was the West Indian cricket team of the 70''s and 80''s? Marshall, Holding, Garner, Croft, Roberts bowling... Richards, Greenidge, Haynes batting. Brilliant stuff. Were the Aussies of the 90''s, 2000''s better, I don''t think so, but Warne and McGrath made a formidable combination.
 font_size: 25
-color: 1;0.937;0 // CANARY YELLOW
+color: CANARY YELLOW
 dock_with: frame3.top_left<->this.top_left
 offset: 15;-15
 --end--
