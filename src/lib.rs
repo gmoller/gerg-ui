@@ -48,19 +48,17 @@ impl Controls {
 }
 
 enum ControlType {
-    None,
     PictureBox,
     Label
 }
 impl Default for ControlType {
-    fn default() -> Self { ControlType::None }
+    fn default() -> Self { ControlType::PictureBox }
 }
 
 enum ReadState {
     None,
     GlobalSettings,
-    PictureBox,
-    Label
+    Control
 }
 
 pub fn read_ui_file(ui_filename: &str) -> Vec<String> {
@@ -100,12 +98,12 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 global_settings = GlobalSettings { ..Default::default() };
             },
             "--picture_box--" => {
-                read_state = ReadState::PictureBox;
+                read_state = ReadState::Control;
                 control.control_type = ControlType::PictureBox;
 
             },
             "--label--" => {
-                read_state = ReadState::Label;
+                read_state = ReadState::Control;
                 control.control_type = ControlType::Label;
                 control.font_name = global_settings.font_name.clone();
                 control.font_size = global_settings.font_size.clone();
@@ -115,10 +113,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 match read_state {
                     ReadState::None => { panic!("End found while not in a valid state. Line #{}: {}.", line_number, line); },
                     ReadState::GlobalSettings => { }, // do nothing
-                    ReadState::PictureBox => {
-                        controls.insert(control.name.clone(), control);
-                    },
-                    ReadState::Label => {
+                    ReadState::Control => {
                         controls.insert(control.name.clone(), control);
                     }
                 }
@@ -140,7 +135,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                             _ => { panic!("Unknown field. Line#{}: {}.", line_number, line); }
                         }
                     },
-                    ReadState::PictureBox => {
+                    ReadState::Control => {
                         match field_name {
                             "name" => { control.name = field_value; },
                             "top_left_position" => { control.top_left_position = field_value; },
@@ -151,22 +146,12 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
 
                             "texture_name" => { control.texture_name = field_value; },
                             "draw_order" => { control.draw_order = field_value; },
-                            _ => { panic!("Unknown field. Line#{}: {}.", line_number, line); }
-                        }
-                    },
-                    ReadState::Label => {
-                        match field_name {
-                            "name" => { control.name = field_value; },
-                            "top_left_position" => { control.top_left_position = field_value; },
-                            "center_position" => { control.center_position = field_value; },
-                            "size" => { control.size = field_value; },
-                            "dock_with" => { control.dock_with = field_value; },
-                            "offset" => { control.offset = field_value; },
 
                             "text_string" => { control.text_string = field_value; },
                             "font_name" => { control.font_name = field_value; },
                             "font_size" => { control.font_size = field_value; },
                             "color" => { control.color = field_value; },
+
                             _ => { panic!("Unknown field. Line#{}: {}.", line_number, line); }
                         }
                     }
@@ -182,12 +167,11 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
 
 pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, mut materials: ResMut<Assets<ColorMaterial>>, controls: Controls, screen_size: Vec2) -> Vec<Entity> {
 
-    let mut result = Vec::new();
+    let mut results = Vec::new();
     let controls_map = &controls.map;
     for (_, control) in controls_map {
 
         match control.control_type {
-            ControlType::None => panic!("Can not spawn control [{}]. Unknown control_type.", control.name),
             ControlType::PictureBox => {
                 let scale = Vec3::new(1.0, 1.0, 1.0);
                 let material_path = control.texture_name.as_str();
@@ -201,7 +185,7 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let bundle = instantiate_sprite_bundle(size, center_position, scale, material);
                 let entity = commands.spawn_bundle(bundle).id();
 
-                result.push(entity);
+                results.push(entity);
             },
             ControlType::Label => {
                 let min_size = Vec2::new(0.0, 0.0);
@@ -216,12 +200,14 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let bundle = instantiate_textbundle(top_left_position, min_size, size, control.text_string.clone(), font_handle, parse_f32(control.font_size.clone()), parse_color(control.color.clone()));
                 let entity = commands.spawn_bundle(bundle).id();
 
-                result.push(entity);
+                results.push(entity);
             }
         }
+
+        //results.push(entity);
     }
 
-    return result;
+    return results;
 }
 
 fn calculate_top_left_position(control: &Control, controls: &Controls) -> Vec2 {
