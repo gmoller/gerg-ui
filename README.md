@@ -15,7 +15,7 @@ with the calling code:
 ```sh
 let lines = gerg_ui::read_ui_file("screen1.ui");
 let controls = gerg_ui::instantiate_controls(lines);
-gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls), Vec2::new(1920.0, 1080.0);
+let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls), Vec2::new(1920.0, 1080.0);
 ```
 
 ```sh
