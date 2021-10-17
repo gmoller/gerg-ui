@@ -20,6 +20,21 @@ pub fn parse_color(s: &String) -> u32 {
     return result;
 }
 
+fn determine_conversion_type(s: &String) -> ConversionType {
+    let s = s.trim();
+
+    if s.starts_with('#') {
+        return ConversionType::FromHexTriplet;
+    }
+
+    let s = s.split(';').collect::<Vec<&str>>();
+    if s.len() >= 3 {
+        return ConversionType::FromRgbDecimal;
+    }
+
+    return ConversionType::FromName;
+}
+
 fn from_hex_triplet(s: &String) -> u32 {
     let mut s2 = s.clone();
     s2.remove(0);
@@ -71,46 +86,6 @@ fn from_name(s: &String) -> u32 {
     }
 }
 
-fn determine_conversion_type(s: &String) -> ConversionType {
-    let s = s.trim();
-
-    if s.starts_with('#') {
-        return ConversionType::FromHexTriplet;
-    }
-
-    let s = s.split(';').collect::<Vec<&str>>();
-    if s.len() >= 3 {
-        return ConversionType::FromRgbDecimal;
-    }
-
-    return ConversionType::FromName;
-}
-
-// pub fn parse_color(s: &String) -> Color {
-
-//     let split = s.trim().split(';').collect::<Vec<&str>>();
-//     if split.len() >= 3 {
-//         let value1 = split[0].trim(); // red
-//         let value2 = split[1].trim(); // green
-//         let value3 = split[2].trim(); // blue
-//         let mut value4 = "1.0";
-//         if split.len() == 4 {
-//             value4 = split[3].trim(); // alpha
-//         }
-        
-//         let result = Color::Rgba { red: value1.parse::<f32>().unwrap(), green: value2.parse::<f32>().unwrap(), blue: value3.parse::<f32>().unwrap(), alpha: value4.parse::<f32>().unwrap() };
-    
-//         return result;
-//     } else {
-//         let col = COLORS.get(split[0].to_lowercase().as_str()).cloned();
-
-//         match col {
-//             Some(c) => return c,
-//             None => panic!("Color [{}] unknown.", s)
-//         }
-//     }
-// }
-
 static COLORS: phf::Map<&'static str, &str> = phf_map! {
     "air force blue" => "#5d8aa8",
     "alice blue" => "#f0f8ff",
@@ -132,7 +107,7 @@ static COLORS: phf::Map<&'static str, &str> = phf_map! {
     "aquamarine" => "#7fffd4",
     "army green" => "#4b5320",
     "arylide yellow" => "#e9d66b",
-    "ash grey" => "#b2beb5",
+    "ash gray" => "#b2beb5",
     "asparagus" => "#87a96b",
     "atomic tangerine" => "#ff9966",
     "auburn" => "#a52a2a",
@@ -148,7 +123,7 @@ static COLORS: phf::Map<&'static str, &str> = phf_map! {
     "ball blue" => "#21abcd",
     "banana mania" => "#fae7b5",
     "banana yellow" => "#ffe135",
-    "battleship grey" => "#848482",
+    "battleship gray" => "#848482",
     "bazaar" => "#98777b",
     "beau blue" => "#bcd4e6",
     "beaver" => "#9f8170",
@@ -157,7 +132,50 @@ static COLORS: phf::Map<&'static str, &str> = phf_map! {
     "bistre" => "#3d2b1f",
     "bittersweet" => "#fe6f5e",
     "black" => "#000000",
+    "blanched almond" => "#ffebcd",
+    "bleu de france" => "#318ce7",
+    "blizzard blue" => "#ace5ee",
+    "blond" => "#faf0be",
     "blue" => "#0000ff",
+    "blue bell" => "#a2a2d0",
+    "blue gray" => "#6699cc",
+    "blue green" => "#0d98ba",
+    "blue purple" => "#8a2be2",
+    "blue violet" => "#8a2be2",
+    "blush" => "#de5d83",
+    "bole" => "#79443b",
+    "bondi blue" => "#0095b6",
+    "bone" => "#e3dac9",
+    "boston university red" => "#cc0000",
+    "bottle green" => "#006a4e",
+    "boysenberry" => "#873260",
+    "brandeis blue" => "#0070ff",
+    "brass" => "#b5a642",
+    "brick red" => "#cb4154",
+    "bright cerulean" => "#1dacd6",
+    "bright green" => "#66ff00",
+    "bright lavender" => "#bf94e4",
+    "bright maroon" => "#c32148",
+    "bright pink" => "#ff007f",
+    "bright turquoise" => "#08e8de",
+    "bright ube" => "#d19fe8",
+    "brilliant lavender" => "#f4bbff",
+    "brilliant rose" => "#ff55a3",
+    "brink pink" => "#fb607f",
+    "british racing green" => "#004225",
+    "bronze" => "#cd7f32",
+    "brown" => "#a52a2a",
+    "bubble gum" => "#ffc1cc",
+    "bubbles" => "#e7feff",
+    "buff" => "#f0dc82",
+    "bulgarian rose" => "#480607",
+    "burgundy" => "#800020",
+    "burlywood" => "#deb887",
+    "burnt orange" => "#cc5500",
+    "burnt sienna" => "#e97451",
+    "burnt umber" => "#8a3324",
+    "byzantine" => "#bd33a4",
+    "byzantium" => "#702963",
 
     "canary yellow" => "#ffef00",
     "chocolate" => "#d2691e",

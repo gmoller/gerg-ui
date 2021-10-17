@@ -27,8 +27,7 @@ let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, 
 --global_settings--
 font_name: CrimsonText-Regular.ttf
 font_size: 30
-//color: White
-color: #FFFFFF
+color: #FFFFFF // can also use: 255;255;255 or WHITE
 --end--
 
 --picture_box--

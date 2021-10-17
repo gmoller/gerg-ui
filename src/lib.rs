@@ -380,7 +380,7 @@ fn instantiate_sprite_bundle(
     size: Vec2,
     center_position: Vec3,
     scale: Vec3,
-    texture_handle: Handle<ColorMaterial>
+    material_handle: Handle<ColorMaterial>
 ) -> SpriteBundle {
 
     let sprite = Sprite::new(size);
@@ -393,7 +393,7 @@ fn instantiate_sprite_bundle(
     let bundle = SpriteBundle {
         transform,
         sprite,
-        material: texture_handle.clone(),
+        material: material_handle.clone(),
         ..Default::default()
     };
 
