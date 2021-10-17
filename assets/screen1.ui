@@ -1,8 +1,8 @@
 --global_settings--
 font_name: CrimsonText-Regular.ttf
 font_size: 30
-//color: 1;1;1
-color: White
+//color: White
+color: #FFFFFF
 --end--
 
 --picture_box--
@@ -47,7 +47,7 @@ name: label1
 size: 100;50
 text_string: Test1
 font_size: 50
-color: CYAN
+color: 0;255;255 // CYAN
 dock_with: frame2.top_left<->this.top_left
 offset: 15;-15
 --end--

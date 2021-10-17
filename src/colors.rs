@@ -1,91 +1,190 @@
-use bevy::prelude::Color;
+use hex::FromHex;
 use phf::phf_map;
 
-pub fn parse_color(s: &String) -> Color {
+enum ConversionType {
+    FromHexTriplet,
+    FromRgbDecimal,
+    //FromRgbPercent,
+    FromName,
+}
 
+pub fn parse_color(s: &String) -> u32 {
+    let conversion_type = determine_conversion_type(&s);
+
+    let result = match conversion_type {
+        ConversionType::FromHexTriplet => from_hex_triplet(s),
+        ConversionType::FromRgbDecimal => from_rgb_decimal(s),
+        ConversionType::FromName => from_name(s),
+    };
+
+    return result;
+}
+
+fn from_hex_triplet(s: &String) -> u32 {
+    let mut s2 = s.clone();
+    s2.remove(0);
+    let buffer = <[u8;3]>::from_hex(s2);
+    let result = match buffer {
+        Ok(bytes) => {
+            ((bytes[0] as u32) << 0) + ((bytes[1] as u32) << 8) + ((bytes[2] as u32) << 16) + (255 << 24)
+        },
+        Err(_) => panic!("[{}] is not a hex value.", s),
+    };
+    println!("from_hex_triplet: {}", result);
+
+    return result;
+}
+
+fn from_rgb_decimal(s: &String) -> u32 {
     let split = s.trim().split(';').collect::<Vec<&str>>();
-    if split.len() >= 3 {
-        let value1 = split[0].trim(); // red
-        let value2 = split[1].trim(); // green
-        let value3 = split[2].trim(); // blue
-        let mut value4 = "1.0";
-        if split.len() == 4 {
-            value4 = split[3].trim(); // alpha
-        }
+    if split.len() == 3 {
+        let value1 = split[0].trim().parse::<u32>().unwrap(); // red
+        let value2 = split[1].trim().parse::<u32>().unwrap(); // green
+        let value3 = split[2].trim().parse::<u32>().unwrap(); // blue
+        let value4: u32 = 255;
         
-        let result = Color::Rgba { red: value1.parse::<f32>().unwrap(), green: value2.parse::<f32>().unwrap(), blue: value3.parse::<f32>().unwrap(), alpha: value4.parse::<f32>().unwrap() };
+        let result = (value1 << 0) + (value2 << 8) + (value3 << 16) + (value4 << 24);
+        println!("from_decimal: {}", result);
+    
+        return result;
+    } else if split.len() == 4 {
+        let value1 = split[0].trim().parse::<u32>().unwrap(); // red
+        let value2 = split[1].trim().parse::<u32>().unwrap(); // green
+        let value3 = split[2].trim().parse::<u32>().unwrap(); // blue
+        let value4 = split[3].trim().parse::<u32>().unwrap(); // alpha
+
+        let result = (value1 << 0) + (value2 << 8) + (value3 << 16) + (value4 << 24);
+        println!("from_decimal: {}", result);
     
         return result;
     } else {
-        let col = COLORS.get(split[0].to_lowercase().as_str()).cloned();
-
-        match col {
-            Some(c) => return c,
-            None => panic!("Color [{}] unknown.", s)
-        }
+        panic!("Could not parse [{}]", s);
     }
 }
 
-static COLORS: phf::Map<&'static str, Color> = phf_map! {
-    "air force blue" => Color::Rgba { red: 0.365, green: 0.541, blue: 0.659, alpha: 1.0 },
-    "alice blue" => Color::Rgba { red: 0.941, green: 0.973, blue: 1.0, alpha: 1.0 },
-    "alizarin crimson" => Color::Rgba { red: 0.89, green: 0.149, blue: 0.212, alpha: 1.0 },
-    "almond" => Color::Rgba { red: 0.937, green: 0.871, blue: 0.804, alpha: 1.0 },
-    "amaranth" => Color::Rgba { red: 0.898, green: 0.169, blue: 0.314, alpha: 1.0 },
-    "amber" => Color::Rgba { red: 1.0, green: 0.749, blue: 0.0, alpha: 1.0 },
-    "american rose" => Color::Rgba { red: 1.0, green: 0.012, blue: 0.243, alpha: 1.0 },
-    "amethyst" => Color::Rgba { red: 0.6, green: 0.4, blue: 0.8, alpha: 1.0 },
-    "android green" => Color::Rgba { red: 0.643, green: 0.776, blue: 0.224, alpha: 1.0 },
-    "anti-flash white" => Color::Rgba { red: 0.949, green: 0.953, blue: 0.957, alpha: 1.0 },
-    "antique brass" => Color::Rgba { red: 0.804, green: 0.584, blue: 0.459, alpha: 1.0 },
-    "antique fuchsia" => Color::Rgba { red: 0.569, green: 0.361, blue: 0.514, alpha: 1.0 },
-    "antique white" => Color::Rgba { red: 0.98, green: 0.922, blue: 0.843, alpha: 1.0 },
-    "ao" => Color::Rgba { red: 0.0, green: 0.502, blue: 0.0, alpha: 1.0 },
-    "apple green" => Color::Rgba { red: 0.553, green: 0.714, blue: 0.0, alpha: 1.0 },
-    "apricot" => Color::Rgba { red: 0.984, green: 0.808, blue: 0.694, alpha: 1.0 },
-    "aqua" => Color::Rgba { red: 0.0, green: 1.0, blue: 1.0, alpha: 1.0 },
-    "aquamarine" => Color::Rgba { red: 0.498, green: 1.0, blue: 0.831, alpha: 1.0 },
-    "army green" => Color::Rgba { red: 0.294, green: 0.325, blue: 0.125, alpha: 1.0 },
-    "arylide yellow" => Color::Rgba { red: 0.914, green: 0.839, blue: 0.42, alpha: 1.0 },
-    "ash grey" => Color::Rgba { red: 0.698, green: 0.745, blue: 0.71, alpha: 1.0 },
-    "asparagus" => Color::Rgba { red: 0.529, green: 0.663, blue: 0.42, alpha: 1.0 },
-    "atomic tangerine" => Color::Rgba { red: 1.0, green: 0.6, blue: 0.4, alpha: 1.0 },
-    "auburn" => Color::Rgba { red: 0.647, green: 0.165, blue: 0.165, alpha: 1.0 },
-    "aureolin" => Color::Rgba { red: 0.992, green: 0.933, blue: 0.0, alpha: 1.0 },
-    "aurometalsaurus" => Color::Rgba { red: 0.431, green: 0.498, blue: 0.502, alpha: 1.0 },
-    "awesome" => Color::Rgba { red: 1.0, green: 0.125, blue: 0.322, alpha: 1.0 },
-    "azure" => Color::Rgba { red: 0.0, green: 0.498, blue: 1.0, alpha: 1.0 },
-    "azure mist/web" => Color::Rgba { red: 0.941, green: 1.0, blue: 1.0, alpha: 1.0 },
+fn from_name(s: &String) -> u32 {
+    let col = COLORS.get(s.to_lowercase().as_str()).cloned();
 
-    "black" => Color::Rgba { red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0 },
-    "blue" => Color::Rgba { red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0 },
+    match col {
+        Some(c) => return from_hex_triplet(&c.to_string()),
+        None => panic!("Color [{}] unknown.", s)
+    }
+}
 
-    "canary yellow" => Color::Rgba { red: 1.0, green: 0.937, blue: 0.0, alpha: 1.0 },
-    "chocolate" => Color::Rgba { red: 0.824, green: 0.412, blue: 0.118, alpha: 1.0 },
-    "cornflower blue" => Color::Rgba { red: 0.392, green: 0.584, blue: 0.929, alpha: 1.0 },
-    "cyan" => Color::Rgba { red: 0.0, green: 1.0, blue: 1.0, alpha: 1.0 },
+fn determine_conversion_type(s: &String) -> ConversionType {
+    let s = s.trim();
 
-    "fuchsia" => Color::Rgba { red: 1.0, green: 0.0, blue: 1.0, alpha: 1.0 },
+    if s.starts_with('#') {
+        return ConversionType::FromHexTriplet;
+    }
 
-    "gray" => Color::Rgba { red: 0.502, green: 0.502, blue: 0.502, alpha: 1.0 },
-    "green" => Color::Rgba { red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0 },
+    let s = s.split(';').collect::<Vec<&str>>();
+    if s.len() >= 3 {
+        return ConversionType::FromRgbDecimal;
+    }
 
-    "magenta" => Color::Rgba { red: 1.0, green: 0.0, blue: 1.0, alpha: 1.0 },
-    "maroon" => Color::Rgba { red: 0.502, green: 0.0, blue: 0.0, alpha: 1.0 },
+    return ConversionType::FromName;
+}
 
-    "navy blue" => Color::Rgba { red: 0.0, green: 0.0, blue: 0.502, alpha: 1.0 },
+// pub fn parse_color(s: &String) -> Color {
 
-    "olive" => Color::Rgba { red: 0.502, green: 0.502, blue: 0.0, alpha: 1.0 },
-
-    "purple" => Color::Rgba { red: 0.502, green: 0.0, blue: 0.502, alpha: 1.0 },
-
-    "red" => Color::Rgba { red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0 },
-
-    "silver" => Color::Rgba { red: 0.753, green: 0.753, blue: 0.753, alpha: 1.0 },
-
-    "teal" => Color::Rgba { red: 0.0, green: 0.502, blue: 0.502, alpha: 1.0 },
-
-    "white" => Color::Rgba { red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0 },
+//     let split = s.trim().split(';').collect::<Vec<&str>>();
+//     if split.len() >= 3 {
+//         let value1 = split[0].trim(); // red
+//         let value2 = split[1].trim(); // green
+//         let value3 = split[2].trim(); // blue
+//         let mut value4 = "1.0";
+//         if split.len() == 4 {
+//             value4 = split[3].trim(); // alpha
+//         }
+        
+//         let result = Color::Rgba { red: value1.parse::<f32>().unwrap(), green: value2.parse::<f32>().unwrap(), blue: value3.parse::<f32>().unwrap(), alpha: value4.parse::<f32>().unwrap() };
     
-    "yellow" => Color::Rgba { red: 1.0, green: 1.0, blue: 0.0, alpha: 1.0 },
+//         return result;
+//     } else {
+//         let col = COLORS.get(split[0].to_lowercase().as_str()).cloned();
+
+//         match col {
+//             Some(c) => return c,
+//             None => panic!("Color [{}] unknown.", s)
+//         }
+//     }
+// }
+
+static COLORS: phf::Map<&'static str, &str> = phf_map! {
+    "air force blue" => "#5d8aa8",
+    "alice blue" => "#f0f8ff",
+    "alizarin crimson" => "#e32636",
+    "almond" => "#efdecd",
+    "amaranth" => "#e52b50",
+    "amber" => "#ffbf00",
+    "american rose" => "#ff033e",
+    "amethyst" => "#9966cc",
+    "android green" => "#a4c639",
+    "anti-flash white" => "#f2f3f4",
+    "antique brass" => "#cd9575",
+    "antique fuchsia" => "#915c83",
+    "antique white" => "#faebd7",
+    "ao" => "#008000",
+    "apple green" => "#8db600",
+    "apricot" => "#fbceb1",
+    "aqua" => "#00ffff",
+    "aquamarine" => "#7fffd4",
+    "army green" => "#4b5320",
+    "arylide yellow" => "#e9d66b",
+    "ash grey" => "#b2beb5",
+    "asparagus" => "#87a96b",
+    "atomic tangerine" => "#ff9966",
+    "auburn" => "#a52a2a",
+    "aureolin" => "#fdee00",
+    "aurometalsaurus" => "#6e7f80",
+    "awesome" => "#ff2052",
+    "azure" => "#007fff",
+    "azure mist/web" => "#f0ffff",
+
+    "baby blue" => "#89cff0",
+    "baby blue eyes" => "#a1caf1",
+    "baby pink" => "#f4c2c2",
+    "ball blue" => "#21abcd",
+    "banana mania" => "#fae7b5",
+    "banana yellow" => "#ffe135",
+    "battleship grey" => "#848482",
+    "bazaar" => "#98777b",
+    "beau blue" => "#bcd4e6",
+    "beaver" => "#9f8170",
+    "beige" => "#f5f5dc",
+    "bisque" => "#ffe4c4",
+    "bistre" => "#3d2b1f",
+    "bittersweet" => "#fe6f5e",
+    "black" => "#000000",
+    "blue" => "#0000ff",
+
+    "canary yellow" => "#ffef00",
+    "chocolate" => "#d2691e",
+    "cornflower blue" => "#6495ed",
+    "cyan" => "#00ffff",
+
+    "fuchsia" => "#ff00ff",
+
+    "gray" => "#808080",
+    "green" => "#00ff00",
+
+    "magenta" => "#ff00ff",
+    "maroon" => "#800000",
+
+    "navy blue" => "#000080",
+
+    "olive" => "#808000",
+
+    "purple" => "#800080",
+
+    "red" => "#ff0000",
+
+    "silver" => "#c0c0c0",
+
+    "teal" => "#008080",
+
+    "white" => "#ffffff",
+
+    "yellow" => "#ffff00",
 };

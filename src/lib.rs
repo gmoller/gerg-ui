@@ -205,7 +205,8 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 top_left_position.y = screen_size.y * 0.5 - top_left_position.y;
                 let text = control.fields.get_by_name("text_string");
                 let font_size = parse_f32(control.fields.get_by_name("font_size"));
-                let color = parse_color(control.fields.get_by_name("color"));
+                let color_u32 = parse_color(control.fields.get_by_name("color"));
+                let color = to_bevy_color(color_u32);
 
                 let bundle = instantiate_textbundle(top_left_position, min_size, size, text, font_handle, font_size, color);
                 let entity = commands.spawn_bundle(bundle).id();
@@ -218,6 +219,18 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
     }
 
     return results;
+}
+
+fn to_bevy_color(color_u32: u32) -> Color {
+    let color_bytes= color_u32.to_le_bytes();
+    let r = color_bytes[0] as f32 / 255.0;
+    let g = color_bytes[1] as f32 / 255.0;
+    let b = color_bytes[2] as f32 / 255.0;
+    let a = color_bytes[3] as f32 / 255.0;
+    println!("r {}, g {}, b {}, a {}", r, g, b, a);
+    let color = Color::Rgba { red: r, green: g, blue: b, alpha: a};
+
+    return color;
 }
 
 fn calculate_top_left_position(control: &Control, controls: &Controls, screen_size: Vec2) -> Vec2 {
