@@ -13,5 +13,6 @@ keywords = [ "gamedev", "Bevy" ]
 
 [dependencies]
 bevy = "0.5"
+bevy_mod_debug_console = "0.0.2"
 hex = "0.4.3"
 phf = { version = "0.10.0", features = ["macros"] }

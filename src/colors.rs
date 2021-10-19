@@ -45,7 +45,6 @@ fn from_hex_triplet(s: &String) -> u32 {
         },
         Err(_) => panic!("[{}] is not a hex value.", s),
     };
-    println!("from_hex_triplet: {}", result);
 
     return result;
 }
@@ -59,7 +58,6 @@ fn from_rgb_decimal(s: &String) -> u32 {
         let value4: u32 = 255;
         
         let result = (value1 << 0) + (value2 << 8) + (value3 << 16) + (value4 << 24);
-        println!("from_decimal: {}", result);
     
         return result;
     } else if split.len() == 4 {
@@ -69,7 +67,6 @@ fn from_rgb_decimal(s: &String) -> u32 {
         let value4 = split[3].trim().parse::<u32>().unwrap(); // alpha
 
         let result = (value1 << 0) + (value2 << 8) + (value3 << 16) + (value4 << 24);
-        println!("from_decimal: {}", result);
     
         return result;
     } else {

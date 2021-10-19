@@ -6,6 +6,8 @@ use bevy::prelude::*;
 use crate::colors::parse_color;
 
 mod colors;
+mod controls;
+mod plugin;
 
 #[derive(Default)]
 struct GlobalSettings {
@@ -57,7 +59,8 @@ impl Fields {
 
 enum ControlType {
     PictureBox,
-    Label
+    Label,
+    Button
 }
 impl Default for ControlType {
     fn default() -> Self { ControlType::PictureBox }
@@ -67,6 +70,13 @@ enum ReadState {
     None,
     GlobalSettings,
     Control
+}
+
+pub fn instantiate_controls_from_file(filename: &str) -> Controls {
+    let lines = read_ui_file(filename);
+    let controls = instantiate_controls(lines);
+
+    return controls;
 }
 
 pub fn read_ui_file(ui_filename: &str) -> Vec<String> {
@@ -83,13 +93,6 @@ pub fn read_ui_file(ui_filename: &str) -> Vec<String> {
     }
 
     return list;
-}
-
-pub fn instantiate_controls_from_file(filename: &str) -> Controls {
-    let lines = read_ui_file(filename);
-    let controls = instantiate_controls(lines);
-
-    return controls;
 }
 
 pub fn instantiate_controls(lines: Vec<String>) -> Controls {
@@ -109,6 +112,19 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
         if line.is_empty() { continue; } // skip line
         if line.trim().starts_with("//") { continue; } // skip line
 
+        if line.trim().starts_with("--") {
+            match line.to_lowercase().as_str() {
+                "--global_settings--" => { },
+                "--picture_box--" => { },
+                "--label--" => { },
+                "--button--" => { },
+                "--end--" => { },
+                _ => {
+                    panic!("Control type [{}] unknown.", line);
+                }
+            }
+        }
+
         match line.to_lowercase().as_str() {
             "--global_settings--" => {
                 read_state = ReadState::GlobalSettings;
@@ -126,6 +142,10 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 control.fields.insert("font_size".to_string(), global_settings.font_size.clone());
                 control.fields.insert("color".to_string(), global_settings.color.clone());
             },
+            "--button--" => {
+                read_state = ReadState::Control;
+                control.control_type = ControlType::Button;
+            }
             "--end--" => {
                 match read_state {
                     ReadState::None => { panic!("End found while not in a valid state. Line #{}: {}.", line_number, line); },
@@ -183,33 +203,54 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
 
         match control.control_type {
             ControlType::PictureBox => {
+                let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.fields.get_by_name("draw_order")));
                 let scale = Vec3::new(1.0, 1.0, 1.0);
-                let material_path = control.fields.get_by_name("texture_name");
-                let texture_handle = asset_server.load(material_path.as_str());
-                let material = materials.add(texture_handle.into());
-            
-                let draw_order = control.fields.get_by_name("draw_order");
-                let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(draw_order));
+                let color_material_handle = materials.add(asset_server.load(control.fields.get_by_name("texture_name").as_str()).into());
 
-                let bundle = instantiate_sprite_bundle(size, center_position, scale, material);
-                let entity = commands.spawn_bundle(bundle).id();
+                let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle, true);
+                let entity = commands
+                    .spawn_bundle(bundle)
+                    .insert(crate::controls::GergPictureBox)
+                    .id();
 
                 results.push(entity);
             },
             ControlType::Label => {
-                let min_size = Vec2::new(0.0, 0.0);
-                let font_path = format!("fonts/{}", control.fields.get_by_name("font_name"));
-                let font_handle: Handle<Font> = asset_server.load(font_path.as_str());
-            
                 top_left_position.x += screen_size.x * 0.5;
                 top_left_position.y = screen_size.y * 0.5 - top_left_position.y;
+                let min_size = Vec2::new(0.0, 0.0);
                 let text = control.fields.get_by_name("text_string");
+                let font_handle: Handle<Font> = asset_server.load(format!("fonts/{}", control.fields.get_by_name("font_name")).as_str());
                 let font_size = parse_f32(control.fields.get_by_name("font_size"));
-                let color_u32 = parse_color(control.fields.get_by_name("color"));
-                let color = to_bevy_color(color_u32);
+                let color = to_bevy_color(parse_color(control.fields.get_by_name("color")));
 
                 let bundle = instantiate_textbundle(top_left_position, min_size, size, text, font_handle, font_size, color);
-                let entity = commands.spawn_bundle(bundle).id();
+                let entity = commands
+                    .spawn_bundle(bundle)
+                    .insert(crate::controls::GergLabel)
+                    .id();
+
+                results.push(entity);
+            },
+            ControlType::Button => {
+                let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.fields.get_by_name("draw_order")));
+                let scale = Vec3::new(1.0, 1.0, 1.0);
+                let color_material_handle_normal = materials.add(asset_server.load(control.fields.get_by_name("texture_name_normal").as_str()).into());
+                let color_material_handle_hover = materials.add(asset_server.load(control.fields.get_by_name("texture_name_hover").as_str()).into());
+                let color_material_handle_active = materials.add(asset_server.load(control.fields.get_by_name("texture_name_active").as_str()).into());
+                let color_material_handle_disabled = materials.add(asset_server.load(control.fields.get_by_name("texture_name_disabled").as_str()).into());
+                
+                let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle_normal.clone(), true);
+                let entity = commands
+                    .spawn_bundle(bundle)
+                    .insert(GergButton {
+                        button_state: ButtonState::Normal,
+                        color_material_handle_normal: color_material_handle_normal,
+                        color_material_handle_hover: color_material_handle_hover,
+                        color_material_handle_active: color_material_handle_active,
+                        color_material_handle_disabled: color_material_handle_disabled
+                    })
+                    .id();
 
                 results.push(entity);
             }
@@ -227,7 +268,7 @@ fn to_bevy_color(color_u32: u32) -> Color {
     let g = color_bytes[1] as f32 / 255.0;
     let b = color_bytes[2] as f32 / 255.0;
     let a = color_bytes[3] as f32 / 255.0;
-    println!("r {}, g {}, b {}, a {}", r, g, b, a);
+
     let color = Color::Rgba { red: r, green: g, blue: b, alpha: a};
 
     return color;
@@ -380,7 +421,8 @@ fn instantiate_sprite_bundle(
     size: Vec2,
     center_position: Vec3,
     scale: Vec3,
-    material_handle: Handle<ColorMaterial>
+    material_handle: Handle<ColorMaterial>,
+    is_visible: bool,
 ) -> SpriteBundle {
 
     let sprite = Sprite::new(size);
@@ -393,6 +435,7 @@ fn instantiate_sprite_bundle(
     let bundle = SpriteBundle {
         transform,
         sprite,
+        visible: Visible { is_visible, is_transparent: false},
         material: material_handle.clone(),
         ..Default::default()
     };
@@ -443,4 +486,19 @@ fn instantiate_textbundle(
     };
 
     return bundle;
+}
+
+pub struct GergButton {
+    pub button_state: ButtonState,
+    pub color_material_handle_normal: Handle<ColorMaterial>,
+    pub color_material_handle_hover: Handle<ColorMaterial>,
+    pub color_material_handle_active: Handle<ColorMaterial>,
+    pub color_material_handle_disabled: Handle<ColorMaterial>,
+}
+
+pub enum ButtonState {
+    Normal,
+    Hover,
+    Active,
+    Disabled
 }
