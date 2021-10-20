@@ -138,15 +138,16 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 control.fields.insert("draw_order".to_string(), "0.0".to_string());
                 control.fields.insert("top_left_position".to_string(), "".to_string());
                 control.fields.insert("center_position".to_string(), "".to_string());
+                control.fields.insert("color".to_string(), global_settings.color.clone());
             },
             "--label--" => {
                 read_state = ReadState::Control;
                 control.control_type = ControlType::Label;
                 control.fields.insert("top_left_position".to_string(), "".to_string());
                 control.fields.insert("center_position".to_string(), "".to_string());
+                control.fields.insert("color".to_string(), global_settings.color.clone());
                 control.fields.insert("font_name".to_string(), global_settings.font_name.clone());
                 control.fields.insert("font_size".to_string(), global_settings.font_size.clone());
-                control.fields.insert("color".to_string(), global_settings.color.clone());
                 control.fields.insert("text_string".to_string(), "".to_string());
             },
             "--button--" => {
@@ -158,6 +159,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 control.fields.insert("draw_order".to_string(), "0.0".to_string());
                 control.fields.insert("top_left_position".to_string(), "".to_string());
                 control.fields.insert("center_position".to_string(), "".to_string());
+                control.fields.insert("color".to_string(), global_settings.color.clone());
             }
             "--end--" => {
                 match read_state {
@@ -218,7 +220,8 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
             ControlType::PictureBox => {
                 let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.fields.get_by_name("draw_order")));
                 let scale = Vec3::new(1.0, 1.0, 1.0);
-                let color_material_handle = materials.add(asset_server.load(control.fields.get_by_name("texture_name").as_str()).into());
+                let texture_name = control.fields.get_by_name("texture_name");
+                let color_material_handle = get_color_material_handle(texture_name, &asset_server, control, &mut materials);
 
                 let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle, true);
                 let entity = commands
@@ -250,7 +253,6 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let scale = Vec3::new(1.0, 1.0, 1.0);
 
                 let texture_name_normal = control.fields.get_by_name("texture_name_normal");
-                let color_material_handle_normal = materials.add(asset_server.load(texture_name_normal.as_str()).into());
                 let mut texture_name_hover = control.fields.get_by_name("texture_name_hover");
                 if texture_name_hover.is_empty() {
                     texture_name_hover = texture_name_normal;
@@ -264,9 +266,10 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                     texture_name_disabled = texture_name_normal;
                 }
 
-                let color_material_handle_hover = materials.add(asset_server.load(texture_name_hover.as_str()).into());
-                let color_material_handle_active = materials.add(asset_server.load(texture_name_active.as_str()).into());
-                let color_material_handle_disabled = materials.add(asset_server.load(texture_name_disabled.as_str()).into());
+                let color_material_handle_normal = get_color_material_handle(texture_name_normal, &asset_server, control, &mut materials);
+                let color_material_handle_hover = get_color_material_handle(texture_name_hover, &asset_server, control, &mut materials);
+                let color_material_handle_active = get_color_material_handle(texture_name_active, &asset_server, control, &mut materials);
+                let color_material_handle_disabled = get_color_material_handle(texture_name_disabled, &asset_server, control, &mut materials);
                 
                 let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle_normal.clone(), true);
                 let entity = commands
@@ -288,6 +291,18 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
     }
 
     return results;
+}
+
+fn get_color_material_handle(path: &str, asset_server: &Res<AssetServer>, control: &Control, materials: &mut ResMut<Assets<ColorMaterial>>) -> Handle<ColorMaterial> {
+    let mut color_material: ColorMaterial = asset_server.load(path).into();
+    let color = control.fields.get_by_name("color");
+    if !color.is_empty() {
+        let color = to_bevy_color(parse_color(color));
+        color_material.color = color;
+    }
+    let color_material_handle = materials.add(color_material);
+    
+    return color_material_handle;
 }
 
 fn to_bevy_color(color_u32: u32) -> Color {
