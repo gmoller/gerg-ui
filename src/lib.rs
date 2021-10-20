@@ -156,6 +156,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 control.fields.insert("texture_name_hover".to_string(), "".to_string());
                 control.fields.insert("texture_name_active".to_string(), "".to_string());
                 control.fields.insert("texture_name_disabled".to_string(), "".to_string());
+                control.fields.insert("on_click_sound".to_string(), "".to_string());
                 control.fields.insert("draw_order".to_string(), "0.0".to_string());
                 control.fields.insert("top_left_position".to_string(), "".to_string());
                 control.fields.insert("center_position".to_string(), "".to_string());
@@ -271,6 +272,8 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let color_material_handle_active = get_color_material_handle(texture_name_active, &asset_server, control, &mut materials);
                 let color_material_handle_disabled = get_color_material_handle(texture_name_disabled, &asset_server, control, &mut materials);
                 
+                let on_click_sound = control.fields.get_by_name("on_click_sound");
+
                 let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle_normal.clone(), true);
                 let entity = commands
                     .spawn_bundle(bundle)
@@ -279,7 +282,8 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                         color_material_handle_normal: color_material_handle_normal,
                         color_material_handle_hover: color_material_handle_hover,
                         color_material_handle_active: color_material_handle_active,
-                        color_material_handle_disabled: color_material_handle_disabled
+                        color_material_handle_disabled: color_material_handle_disabled,
+                        on_click_sound: on_click_sound.to_string()
                     })
                     .id();
 

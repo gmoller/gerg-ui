@@ -13,6 +13,8 @@ fn control_click_check_system(
     mut commands: Commands,
     windows: Res<Windows>,
     mouse_input: Res<Input<MouseButton>>,
+    audio: Res<Audio>,
+    asset_server: Res<AssetServer>,
     mut control_query: Query<(Entity, &Sprite, &Transform, &mut Handle<ColorMaterial>, &mut GergButton)>
 ) {
 
@@ -31,8 +33,14 @@ fn control_click_check_system(
                         button.button_state = ButtonState::Active;
                         *color_material = button.color_material_handle_active.clone();
 
-                        // TODO: play sound
+                        let sound = &button.on_click_sound;
+                        if !sound.is_empty() {
+                            let sound_effect = asset_server.load(sound.as_str());
+                            audio.play(sound_effect);
+                        }
+
                         commands.entity(entity).insert(Cooldown { remaining_time_in_ms: 100.0 });
+                        
                         // TODO: call some sort of func/action delegate
                     },
                     _ => { } // do nothing
@@ -124,6 +132,7 @@ pub struct GergButton {
     pub color_material_handle_hover: Handle<ColorMaterial>,
     pub color_material_handle_active: Handle<ColorMaterial>,
     pub color_material_handle_disabled: Handle<ColorMaterial>,
+    pub on_click_sound: String
 }
 
 pub enum ButtonState {
