@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use bevy::prelude::*;
+use plugin::{ButtonState, GergButton, GergLabel, GergPictureBox};
 
 use crate::colors::parse_color;
 
 mod colors;
-mod controls;
-mod plugin;
+pub mod plugin;
 
 #[derive(Default)]
 struct GlobalSettings {
@@ -129,22 +129,35 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
             "--global_settings--" => {
                 read_state = ReadState::GlobalSettings;
                 global_settings = GlobalSettings { ..Default::default() };
+                global_settings.font_size = "20".to_string();
+                global_settings.color = "255;255;255".to_string();
             },
             "--picture_box--" => {
                 read_state = ReadState::Control;
                 control.control_type = ControlType::PictureBox;
-
+                control.fields.insert("draw_order".to_string(), "0.0".to_string());
+                control.fields.insert("top_left_position".to_string(), "".to_string());
+                control.fields.insert("center_position".to_string(), "".to_string());
             },
             "--label--" => {
                 read_state = ReadState::Control;
                 control.control_type = ControlType::Label;
+                control.fields.insert("top_left_position".to_string(), "".to_string());
+                control.fields.insert("center_position".to_string(), "".to_string());
                 control.fields.insert("font_name".to_string(), global_settings.font_name.clone());
                 control.fields.insert("font_size".to_string(), global_settings.font_size.clone());
                 control.fields.insert("color".to_string(), global_settings.color.clone());
+                control.fields.insert("text_string".to_string(), "".to_string());
             },
             "--button--" => {
                 read_state = ReadState::Control;
                 control.control_type = ControlType::Button;
+                control.fields.insert("texture_name_hover".to_string(), "".to_string());
+                control.fields.insert("texture_name_active".to_string(), "".to_string());
+                control.fields.insert("texture_name_disabled".to_string(), "".to_string());
+                control.fields.insert("draw_order".to_string(), "0.0".to_string());
+                control.fields.insert("top_left_position".to_string(), "".to_string());
+                control.fields.insert("center_position".to_string(), "".to_string());
             }
             "--end--" => {
                 match read_state {
@@ -210,7 +223,7 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle, true);
                 let entity = commands
                     .spawn_bundle(bundle)
-                    .insert(crate::controls::GergPictureBox)
+                    .insert(GergPictureBox)
                     .id();
 
                 results.push(entity);
@@ -227,7 +240,7 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
                 let bundle = instantiate_textbundle(top_left_position, min_size, size, text, font_handle, font_size, color);
                 let entity = commands
                     .spawn_bundle(bundle)
-                    .insert(crate::controls::GergLabel)
+                    .insert(GergLabel)
                     .id();
 
                 results.push(entity);
@@ -235,10 +248,25 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
             ControlType::Button => {
                 let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.fields.get_by_name("draw_order")));
                 let scale = Vec3::new(1.0, 1.0, 1.0);
-                let color_material_handle_normal = materials.add(asset_server.load(control.fields.get_by_name("texture_name_normal").as_str()).into());
-                let color_material_handle_hover = materials.add(asset_server.load(control.fields.get_by_name("texture_name_hover").as_str()).into());
-                let color_material_handle_active = materials.add(asset_server.load(control.fields.get_by_name("texture_name_active").as_str()).into());
-                let color_material_handle_disabled = materials.add(asset_server.load(control.fields.get_by_name("texture_name_disabled").as_str()).into());
+
+                let texture_name_normal = control.fields.get_by_name("texture_name_normal");
+                let color_material_handle_normal = materials.add(asset_server.load(texture_name_normal.as_str()).into());
+                let mut texture_name_hover = control.fields.get_by_name("texture_name_hover");
+                if texture_name_hover.is_empty() {
+                    texture_name_hover = texture_name_normal;
+                }
+                let mut texture_name_active = control.fields.get_by_name("texture_name_active");
+                if texture_name_active.is_empty() {
+                    texture_name_active = texture_name_normal;
+                }
+                let mut texture_name_disabled = control.fields.get_by_name("texture_name_disabled");
+                if texture_name_disabled.is_empty() {
+                    texture_name_disabled = texture_name_normal;
+                }
+
+                let color_material_handle_hover = materials.add(asset_server.load(texture_name_hover.as_str()).into());
+                let color_material_handle_active = materials.add(asset_server.load(texture_name_active.as_str()).into());
+                let color_material_handle_disabled = materials.add(asset_server.load(texture_name_disabled.as_str()).into());
                 
                 let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle_normal.clone(), true);
                 let entity = commands
@@ -286,7 +314,7 @@ fn calculate_top_left_position(control: &Control, controls: &Controls, screen_si
             let center_position = control.fields.get_by_name("center_position");
 
             if center_position.is_empty() {
-                return Vec2::new(0.0, 0.0);
+                return Vec2::new(0.0 - control_size.x * 0.5, 0.0 + control_size.y * 0.5);
             } else {
                 let cp = parse_vec2(&center_position);
                 let tlp = Vec2::new(cp.x - control_size.x * 0.5, cp.y + control_size.y * 0.5);
@@ -435,7 +463,7 @@ fn instantiate_sprite_bundle(
     let bundle = SpriteBundle {
         transform,
         sprite,
-        visible: Visible { is_visible, is_transparent: false},
+        visible: Visible { is_visible, is_transparent: true},
         material: material_handle.clone(),
         ..Default::default()
     };
@@ -486,19 +514,4 @@ fn instantiate_textbundle(
     };
 
     return bundle;
-}
-
-pub struct GergButton {
-    pub button_state: ButtonState,
-    pub color_material_handle_normal: Handle<ColorMaterial>,
-    pub color_material_handle_hover: Handle<ColorMaterial>,
-    pub color_material_handle_active: Handle<ColorMaterial>,
-    pub color_material_handle_disabled: Handle<ColorMaterial>,
-}
-
-pub enum ButtonState {
-    Normal,
-    Hover,
-    Active,
-    Disabled
 }
