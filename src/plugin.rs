@@ -6,11 +6,11 @@ impl Plugin for ControlsPlugin {
         app
             .add_system(control_click_check_system.system())
             .add_system(control_hover_system.system())
-            .add_system(control_cooldown_system.system());
+            .add_system(button_cooldown_system.system());
     }
 }
 
-fn control_cooldown_system(
+fn button_cooldown_system(
     mut commands: Commands,
     time: Res<Time>,
     mut control_query: Query<(Entity, &mut Handle<ColorMaterial>, &mut Cooldown, &mut GergButton)>
