@@ -5,7 +5,26 @@ impl Plugin for ControlsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
             .add_system(control_click_check_system.system())
-            .add_system(control_hover_system.system());
+            .add_system(control_hover_system.system())
+            .add_system(control_cooldown_system.system());
+    }
+}
+
+fn control_cooldown_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut control_query: Query<(Entity, &mut Handle<ColorMaterial>, &mut Cooldown, &mut GergButton)>
+) {
+    for (entity, mut color_material, mut cooldown, mut button) in control_query.iter_mut() {
+        cooldown.remaining_time_in_seconds -= time.delta_seconds();
+
+        if cooldown.remaining_time_in_seconds <= 0.0 {
+            // change to normal
+            button.button_state = ButtonState::Normal;
+            *color_material = button.color_material_handle_normal.clone();
+
+            commands.entity(entity).remove::<Cooldown>();
+        }
     }
 }
 
@@ -17,8 +36,6 @@ fn control_click_check_system(
     asset_server: Res<AssetServer>,
     mut control_query: Query<(Entity, &Sprite, &Transform, &mut Handle<ColorMaterial>, &mut GergButton)>
 ) {
-
-    //println!("control_click_check_system");
     if mouse_input.just_pressed(MouseButton::Left) {
         let cursor_position = get_cursor_position(windows);
 
@@ -39,7 +56,7 @@ fn control_click_check_system(
                             audio.play(sound_effect);
                         }
 
-                        commands.entity(entity).insert(Cooldown { remaining_time_in_ms: 100.0 });
+                        commands.entity(entity).insert(Cooldown { remaining_time_in_seconds: 0.5 });
                         
                         // TODO: call some sort of func/action delegate
                     },
@@ -54,8 +71,6 @@ fn control_hover_system(
     windows: Res<Windows>,
     mut control_query: Query<(&Sprite, &Transform, &mut Handle<ColorMaterial>, &mut GergButton)>
 ) {
-
-    //println!("control_hover_system");
     let cursor_position = get_cursor_position(windows);
 
     for (sprite, transform, mut color_material, mut button) in control_query.iter_mut() {
@@ -119,7 +134,7 @@ fn cursor_position_overlaps_control_rect(cursor_position: &Vec2, control_boundin
 }
 
 pub struct Cooldown {
-    pub remaining_time_in_ms: f32
+    pub remaining_time_in_seconds: f32
 }
 
 pub struct GergPictureBox;

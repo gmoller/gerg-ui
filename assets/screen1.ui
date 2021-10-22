@@ -100,6 +100,6 @@ texture_name_active: button-a.png
 texture_name_disabled: button-d.png
 size: 100;48
 draw_order: 0.4
-//dock_with: screen.bottom_right<->this.bottom_right
-//offset: -10;10
+dock_with: screen.bottom_right<->this.bottom_right
+offset: -10;10
 --end--
