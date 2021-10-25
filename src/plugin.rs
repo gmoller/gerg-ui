@@ -4,9 +4,10 @@ pub struct ControlsPlugin {}
 impl Plugin for ControlsPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
-            .add_system(control_click_check_system.system())
-            .add_system(control_hover_system.system())
-            .add_system(button_cooldown_system.system());
+            .add_system(button_click_check_system.system())
+            .add_system(button_hover_system.system())
+            .add_system(button_cooldown_system.system())
+            .add_system(destroy_controls_system.system());
     }
 }
 
@@ -28,7 +29,7 @@ fn button_cooldown_system(
     }
 }
 
-fn control_click_check_system(
+fn button_click_check_system(
     mut commands: Commands,
     windows: Res<Windows>,
     mouse_input: Res<Input<MouseButton>>,
@@ -59,6 +60,7 @@ fn control_click_check_system(
                         commands.entity(entity).insert(Cooldown { remaining_time_in_seconds: 0.5 });
                         
                         // TODO: call some sort of func/action delegate
+                        commands.entity(entity).insert(ButtonClicked);
                     },
                     _ => { } // do nothing
                 }
@@ -67,7 +69,7 @@ fn control_click_check_system(
     }
 }
 
-fn control_hover_system(
+fn button_hover_system(
     windows: Res<Windows>,
     mut control_query: Query<(&Sprite, &Transform, &mut Handle<ColorMaterial>, &mut GergButton)>
 ) {
@@ -98,6 +100,15 @@ fn control_hover_system(
                 _ => { } // do nothing
             }
         }
+    }
+}
+
+fn destroy_controls_system(
+    mut commands: Commands,
+    controls_to_be_destroyed_query: Query<Entity, With<DestroyControl>>
+) {
+    for entity in  controls_to_be_destroyed_query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }
 
@@ -137,11 +148,24 @@ pub struct Cooldown {
     pub remaining_time_in_seconds: f32
 }
 
-pub struct GergPictureBox;
+pub struct ButtonClicked;
 
-pub struct GergLabel;
+pub struct DestroyControl;
+
+pub struct GergControl {
+    pub group_name: String
+}
+
+pub struct GergPictureBox {
+    pub name: String
+}
+
+pub struct GergLabel {
+    pub name: String
+}
 
 pub struct GergButton {
+    pub name: String,
     pub button_state: ButtonState,
     pub color_material_handle_normal: Handle<ColorMaterial>,
     pub color_material_handle_hover: Handle<ColorMaterial>,

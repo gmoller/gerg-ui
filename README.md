@@ -15,12 +15,12 @@ with the calling code:
 ```sh
 let lines = gerg_ui::read_ui_file("screen1.ui");
 let controls = gerg_ui::instantiate_controls(lines);
-let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls), Vec2::new(1920.0, 1080.0);
+let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls, Vec2::new(1920.0, 1080.0), String::from("screen1.ui"));
 ```
 or:
 ```sh
 let controls = gerg_ui::instantiate_controls_from_file("screen1.ui");
-let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls), Vec2::new(1920.0, 1080.0);
+let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls, Vec2::new(1920.0, 1080.0), String::from("screen1.ui"));
 ```
 
 ```sh

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use bevy::prelude::*;
-use plugin::{ButtonState, GergButton, GergLabel, GergPictureBox};
+use plugin::{ButtonState, GergButton, GergControl, GergLabel, GergPictureBox};
 
 use crate::colors::parse_color;
 
@@ -208,84 +208,28 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
     return result;
 }
 
-pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, mut materials: ResMut<Assets<ColorMaterial>>, controls: Controls, screen_size: Vec2) -> Vec<Entity> {
+pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, mut materials: ResMut<Assets<ColorMaterial>>, controls: Controls, screen_size: Vec2, control_group_name: String) -> Vec<Entity> {
 
     let mut results = Vec::new();
     let controls_map = &controls.map;
     for (_, control) in controls_map {
 
         let size = parse_vec2(control.fields.get_by_name("size"));
-        let mut top_left_position = calculate_top_left_position(control, &controls, screen_size);
+        let top_left_position = calculate_top_left_position(control, &controls, screen_size);
 
         match control.control_type {
             ControlType::PictureBox => {
-                let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.fields.get_by_name("draw_order")));
-                let scale = Vec3::new(1.0, 1.0, 1.0);
-                let texture_name = control.fields.get_by_name("texture_name");
-                let color_material_handle = get_color_material_handle(texture_name, &asset_server, control, &mut materials);
-
-                let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle, true);
-                let entity = commands
-                    .spawn_bundle(bundle)
-                    .insert(GergPictureBox)
-                    .id();
+                let entity = spawn_picture_box(top_left_position, size, control, &asset_server, &mut materials, commands, &control_group_name);
 
                 results.push(entity);
             },
             ControlType::Label => {
-                top_left_position.x += screen_size.x * 0.5;
-                top_left_position.y = screen_size.y * 0.5 - top_left_position.y;
-                let min_size = Vec2::new(0.0, 0.0);
-                let text = control.fields.get_by_name("text_string");
-                let font_handle: Handle<Font> = asset_server.load(format!("fonts/{}", control.fields.get_by_name("font_name")).as_str());
-                let font_size = parse_f32(control.fields.get_by_name("font_size"));
-                let color = to_bevy_color(parse_color(control.fields.get_by_name("color")));
-
-                let bundle = instantiate_textbundle(top_left_position, min_size, size, text, font_handle, font_size, color);
-                let entity = commands
-                    .spawn_bundle(bundle)
-                    .insert(GergLabel)
-                    .id();
+                let entity = spawn_label(top_left_position, screen_size, control, &asset_server, size, commands, &control_group_name);
 
                 results.push(entity);
             },
             ControlType::Button => {
-                let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.fields.get_by_name("draw_order")));
-                let scale = Vec3::new(1.0, 1.0, 1.0);
-
-                let texture_name_normal = control.fields.get_by_name("texture_name_normal");
-                let mut texture_name_hover = control.fields.get_by_name("texture_name_hover");
-                if texture_name_hover.is_empty() {
-                    texture_name_hover = texture_name_normal;
-                }
-                let mut texture_name_active = control.fields.get_by_name("texture_name_active");
-                if texture_name_active.is_empty() {
-                    texture_name_active = texture_name_normal;
-                }
-                let mut texture_name_disabled = control.fields.get_by_name("texture_name_disabled");
-                if texture_name_disabled.is_empty() {
-                    texture_name_disabled = texture_name_normal;
-                }
-
-                let color_material_handle_normal = get_color_material_handle(texture_name_normal, &asset_server, control, &mut materials);
-                let color_material_handle_hover = get_color_material_handle(texture_name_hover, &asset_server, control, &mut materials);
-                let color_material_handle_active = get_color_material_handle(texture_name_active, &asset_server, control, &mut materials);
-                let color_material_handle_disabled = get_color_material_handle(texture_name_disabled, &asset_server, control, &mut materials);
-                
-                let on_click_sound = control.fields.get_by_name("on_click_sound");
-
-                let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle_normal.clone(), true);
-                let entity = commands
-                    .spawn_bundle(bundle)
-                    .insert(GergButton {
-                        button_state: ButtonState::Normal,
-                        color_material_handle_normal: color_material_handle_normal,
-                        color_material_handle_hover: color_material_handle_hover,
-                        color_material_handle_active: color_material_handle_active,
-                        color_material_handle_disabled: color_material_handle_disabled,
-                        on_click_sound: on_click_sound.to_string()
-                    })
-                    .id();
+                let entity = spawn_button(top_left_position, size, control, &asset_server, &mut materials, commands, &control_group_name);
 
                 results.push(entity);
             }
@@ -295,6 +239,85 @@ pub fn spawn_controls(commands: &mut Commands, asset_server: Res<AssetServer>, m
     }
 
     return results;
+}
+
+fn spawn_picture_box(top_left_position: Vec2, size: Vec2, control: &Control, asset_server: &Res<AssetServer>, materials: &mut ResMut<Assets<ColorMaterial>>, commands: &mut Commands, control_group_name: &String) -> Entity {
+    let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.fields.get_by_name("draw_order")));
+    let scale = Vec3::new(1.0, 1.0, 1.0);
+    let texture_name = control.fields.get_by_name("texture_name");
+    let color_material_handle = get_color_material_handle(texture_name, asset_server, control, materials);
+    let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle, true);
+    let entity = commands
+        .spawn_bundle(bundle)
+        .insert(GergPictureBox { name: control.fields.get_by_name("name").clone() })
+        .insert(GergControl { group_name: control_group_name.clone() })
+        .id();
+
+    println!("Spawned: {}, {}", control.fields.get_by_name("name").clone(), control_group_name.clone());
+
+    return entity;
+}
+
+fn spawn_label(top_left_position: Vec2, screen_size: Vec2, control: &Control, asset_server: &Res<AssetServer>, size: Vec2, commands: &mut Commands, control_group_name: &String) -> Entity {
+    let top_left_position = Vec2::new(top_left_position.x + screen_size.x * 0.5, screen_size.y * 0.5 - top_left_position.y);
+    //top_left_position.x += screen_size.x * 0.5;
+    //top_left_position.y = screen_size.y * 0.5 - top_left_position.y;
+    let min_size = Vec2::new(0.0, 0.0);
+    let text = control.fields.get_by_name("text_string");
+    let font_handle: Handle<Font> = asset_server.load(format!("fonts/{}", control.fields.get_by_name("font_name")).as_str());
+    let font_size = parse_f32(control.fields.get_by_name("font_size"));
+    let color = to_bevy_color(parse_color(control.fields.get_by_name("color")));
+    let bundle = instantiate_textbundle(top_left_position, min_size, size, text, font_handle, font_size, color);
+    let entity = commands
+        .spawn_bundle(bundle)
+        .insert(GergLabel { name: control.fields.get_by_name("name").clone() })
+        .insert(GergControl { group_name: control_group_name.clone() })
+        .id();
+
+    println!("Spawned: {}, {}", control.fields.get_by_name("name").clone(), control_group_name.clone());
+
+    return entity;
+}
+
+fn spawn_button(top_left_position: Vec2, size: Vec2, control: &Control, asset_server: &Res<AssetServer>, materials: &mut ResMut<Assets<ColorMaterial>>, commands: &mut Commands, control_group_name: &String) -> Entity {
+    let center_position = Vec3::new(top_left_position.x + size.x * 0.5, top_left_position.y - size.y * 0.5, parse_f32(control.fields.get_by_name("draw_order")));
+    let scale = Vec3::new(1.0, 1.0, 1.0);
+    let texture_name_normal = control.fields.get_by_name("texture_name_normal");
+    let mut texture_name_hover = control.fields.get_by_name("texture_name_hover");
+    if texture_name_hover.is_empty() {
+        texture_name_hover = texture_name_normal;
+    }
+    let mut texture_name_active = control.fields.get_by_name("texture_name_active");
+    if texture_name_active.is_empty() {
+        texture_name_active = texture_name_normal;
+    }
+    let mut texture_name_disabled = control.fields.get_by_name("texture_name_disabled");
+    if texture_name_disabled.is_empty() {
+        texture_name_disabled = texture_name_normal;
+    }
+    let color_material_handle_normal = get_color_material_handle(texture_name_normal, asset_server, control, materials);
+    let color_material_handle_hover = get_color_material_handle(texture_name_hover, asset_server, control, materials);
+    let color_material_handle_active = get_color_material_handle(texture_name_active, asset_server, control, materials);
+    let color_material_handle_disabled = get_color_material_handle(texture_name_disabled, asset_server, control, materials);
+    let on_click_sound = control.fields.get_by_name("on_click_sound");
+    let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle_normal.clone(), true);
+    let entity = commands
+        .spawn_bundle(bundle)
+        .insert(GergButton {
+            name: control.fields.get_by_name("name").clone(),
+            button_state: ButtonState::Normal,
+            color_material_handle_normal: color_material_handle_normal,
+            color_material_handle_hover: color_material_handle_hover,
+            color_material_handle_active: color_material_handle_active,
+            color_material_handle_disabled: color_material_handle_disabled,
+            on_click_sound: on_click_sound.to_string()
+        })
+        .insert(GergControl { group_name: control_group_name.clone() })
+        .id();
+
+    println!("Spawned: {}, {}", control.fields.get_by_name("name").clone(), control_group_name.clone());
+
+    return entity;
 }
 
 fn get_color_material_handle(path: &str, asset_server: &Res<AssetServer>, control: &Control, materials: &mut ResMut<Assets<ColorMaterial>>) -> Handle<ColorMaterial> {

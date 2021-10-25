@@ -26,5 +26,5 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, materials: ResM
     commands.spawn_bundle(UiCameraBundle::default());
 
     let controls = gerg_ui::instantiate_controls_from_file("screen1.ui");
-    let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls, Vec2::new(1920.0, 1080.0));
+    let _entities = gerg_ui::spawn_controls(&mut commands, asset_server, materials, controls, Vec2::new(1920.0, 1080.0), "screen1.ui".to_string());
 }
