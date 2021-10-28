@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::shapes::Circle;
+
 pub struct ControlsPlugin {}
 impl Plugin for ControlsPlugin {
     fn build(&self, app: &mut AppBuilder) {
@@ -41,10 +43,11 @@ fn button_click_check_system(
         let cursor_position = get_cursor_position(windows);
 
         for (entity, sprite, transform, mut color_material, mut button) in control_query.iter_mut() {
-            let control_boundingbox = get_control_rectangle(sprite, transform);
+            let control_bounding_shapes = get_control_bounding_shapes(button.bounding_box, button.bounding_circle, sprite, transform);
     
             // if mouse is over control
-            if cursor_position_overlaps_control_rect(&cursor_position, &control_boundingbox) {
+            let collision = cursor_position_overlaps_control_bounding_shapes(cursor_position, control_bounding_shapes);
+            if collision {
                 match button.button_state {
                     ButtonState::Hover => {
                         // change to active
@@ -76,11 +79,11 @@ fn button_hover_system(
     let cursor_position = get_cursor_position(windows);
 
     for (sprite, transform, mut color_material, mut button) in control_query.iter_mut() {
-
-        let control_boundingbox = get_control_rectangle(sprite, transform);
+        let control_bounding_shapes = get_control_bounding_shapes(button.bounding_box, button.bounding_circle, sprite, transform);
 
         // if mouse is over control
-        if cursor_position_overlaps_control_rect(&cursor_position, &control_boundingbox) {
+        let collision = cursor_position_overlaps_control_bounding_shapes(cursor_position, control_bounding_shapes);
+        if collision {
             match button.button_state {
                 ButtonState::Normal => {
                     // change to hover
@@ -126,22 +129,78 @@ fn get_cursor_position(windows: Res<Windows>) -> Vec2 {
     cursor_position
 }
 
-fn get_control_rectangle(sprite: &Sprite, transform: &Transform) -> Rect<f32> {
-    let width = sprite.size.x;
-    let height = sprite.size.y;
-    let x = transform.translation.x - (width * 0.5);
-    let y = transform.translation.y + (height * 0.5);
+fn get_control_bounding_shapes(button_bounding_box: Vec4, button_bounding_circle: Vec3, sprite: &Sprite, transform: &Transform) -> (Option<Rect<f32>>, Option<Circle>) {
+    if button_bounding_box.x == 0.0 && button_bounding_box.y == 0.0 && button_bounding_box.z == 0.0 && button_bounding_box.w == 0.0 {
+        if button_bounding_circle.x == 0.0 && button_bounding_circle.y == 0.0 && button_bounding_circle.z == 0.0 {
+            let rect = create_rectangle(button_bounding_box.x, button_bounding_box.y, sprite.size.x, sprite.size.y, transform);
+
+            return (Some(rect), None);
+        } else {
+            let circle = create_circle(transform, button_bounding_circle);
+
+            return (None, Some(circle));
+        };
+    } else {
+        if button_bounding_circle.x == 0.0 && button_bounding_circle.y == 0.0 && button_bounding_circle.z == 0.0 {
+            let rect = create_rectangle(button_bounding_box.x, button_bounding_box.y, button_bounding_box.z, button_bounding_box.w, transform);
+
+            return (Some(rect), None);
+        } else {
+            let rect = create_rectangle(button_bounding_box.x, button_bounding_box.y, button_bounding_box.z, button_bounding_box.w, transform);
+            let circle = create_circle(transform, button_bounding_circle);
+
+            return (Some(rect), Some(circle));
+        };
+    };
+}
+
+fn create_rectangle(x: f32, y: f32, width: f32, height: f32, transform: &Transform) -> Rect<f32> {
+    let x = (transform.translation.x + x) - (width * 0.5);
+    let y = (transform.translation.y + y) + (height * 0.5);
     let rect = Rect { left: x, right: x + width, top: y, bottom: y - height };
+
     rect
 }
 
-fn cursor_position_overlaps_control_rect(cursor_position: &Vec2, control_boundingbox: &Rect<f32>) -> bool {
-    if cursor_position.x >= control_boundingbox.left && cursor_position.x <= control_boundingbox.right &&
-       cursor_position.y >= control_boundingbox.bottom && cursor_position.y <= control_boundingbox.top {
-        return true;
+fn create_circle(transform: &Transform, button_bounding_circle: Vec3) -> Circle {
+    let center = Vec2::new(transform.translation.x + button_bounding_circle.x, transform.translation.y + button_bounding_circle.y);
+    let radius = button_bounding_circle.z;
+    let circle = Circle { center, radius };
+
+    circle
+}
+
+fn cursor_position_overlaps_control_bounding_shapes(cursor_position: Vec2, bounding_shapes: (Option<Rect<f32>>, Option<Circle>)) -> bool {
+    let rectangle_collides = match bounding_shapes.0 {
+        Some(rect) => cursor_position_overlaps_control_rect(cursor_position, &rect),
+        None => true,
+    };
+
+    let circle_collides = match bounding_shapes.1 {
+        Some(circle) => cursor_position_overlaps_control_circle(cursor_position, &circle),
+        None => true,
+    };
+
+    rectangle_collides && circle_collides
+}
+
+fn cursor_position_overlaps_control_rect(cursor_position: Vec2, control_bounding_box: &Rect<f32>) -> bool {
+    let result = if cursor_position.x >= control_bounding_box.left && cursor_position.x <= control_bounding_box.right &&
+       cursor_position.y >= control_bounding_box.bottom && cursor_position.y <= control_bounding_box.top {
+        true
     } else {
-        return false;
-    }
+        false
+    };
+
+    result
+}
+
+fn cursor_position_overlaps_control_circle(cursor_position: Vec2, control_bounding_circle: &Circle) -> bool {
+    let distance = control_bounding_circle.center - cursor_position;
+    let length = distance.length();
+    let result = length <= control_bounding_circle.radius;
+
+    result
 }
 
 pub struct Cooldown {
@@ -171,7 +230,9 @@ pub struct GergButton {
     pub color_material_handle_hover: Handle<ColorMaterial>,
     pub color_material_handle_active: Handle<ColorMaterial>,
     pub color_material_handle_disabled: Handle<ColorMaterial>,
-    pub on_click_sound: String
+    pub on_click_sound: String,
+    pub bounding_box: Vec4,
+    pub bounding_circle: Vec3,
 }
 
 pub enum ButtonState {

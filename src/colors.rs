@@ -17,7 +17,7 @@ pub fn parse_color(s: &String) -> u32 {
         ConversionType::FromName => from_name(s),
     };
 
-    return result;
+    result
 }
 
 fn determine_conversion_type(s: &String) -> ConversionType {
@@ -46,7 +46,7 @@ fn from_hex_triplet(s: &String) -> u32 {
         Err(_) => panic!("[{}] is not a hex value.", s),
     };
 
-    return result;
+    result
 }
 
 fn from_rgb_decimal(s: &String) -> u32 {
@@ -219,7 +219,28 @@ static COLORS: phf::Map<&'static str, &str> = phf_map! {
     "cherry blossom pink" => "#ffb7c5",
     "chestnut" => "#cd5c5c",
     "chocolate" => "#d2691e",
-    
+    "chrome yellow" => "#ffa700",
+    "cinereous" => "#98817b",
+    "cinnabar" => "#e34234",
+    "cinnamon" => "#d2691e",
+    "citrine" => "#e4d00a",
+    "classic rose" => "#fbcce7",
+    "cobalt" => "#0047ab",
+    "cocoa brown" => "#d2691e",
+    "coffee" => "#6f4e37",
+    "columbia blue" => "#9bddff",
+    "cool black" => "#002e63",
+    "cool gray" => "#8c92ac",
+    "copper" => "#b87333",
+    "copper rose" => "#996666",
+    "coquelicot" => "#ff3800",
+    "coral" => "#ff7f50",
+    "coral pink" => "#f88379",
+    "coral red" => "#ff4040",
+    "cordovan" => "#893f45",
+    "corn" => "#fbec5d",
+    "cornell red" => "#b31b1b",
+    "cornflower" => "#9aceeb",
     "cornflower blue" => "#6495ed",
     "cornsilk" => "#fff8dc",
     "cosmic latte" => "#fff8e7",

@@ -99,6 +99,9 @@ texture_name_hover: button-h.png
 texture_name_active: button-a.png
 texture_name_disabled: button-d.png
 size: 100;48
+bounding_box: 0;0;50;24
+//bounding_box: 50;24;100;48
+//bounding_circle: 0;0;48
 draw_order: 0.4
 dock_with: screen.bottom_right<->this.bottom_right
 offset: -10;10
