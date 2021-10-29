@@ -5,7 +5,7 @@
 
 This is a little thing I put together for creating simple UI screens using the BevyEngine.
 The idea is to define the screens in a sort of poor-man's markup and this crate will then
-provide some functions to create the UI 'objects'.
+provide some functions to create the UI 'widgets'.
 
 For example, the following in a file will create a screen looking like:
 
@@ -13,7 +13,7 @@ For example, the following in a file will create a screen looking like:
 
 with the code:
 ```sh
-// start_system
+// startup_system
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -46,21 +46,40 @@ fn close_button_click_system(
         }
     }
 }
+
+// text_change_system
+fn change_text_system(
+    diagnostics: Res<Diagnostics>,
+    mut query: Query<(&mut Text, &GergLabel), With<TextChanges>>
+) {
+    for (mut text, label) in query.iter_mut() {
+        if label.name == "label1" {
+            let mut fps = 0.0;
+            if let Some(fps_diagnostic) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+                if let Some(fps_avg) = fps_diagnostic.average() {
+                    fps = fps_avg;
+                }
+            }
+
+            text.sections[0].value = format!("FPS: {:.1}", fps);
+        }
+    }
+}
 ```
 
 ```sh
 --global_settings--
-font_name: CrimsonText-Regular.ttf
-font_size: 30
-color: 255;255;255 // WHITE
+font_name: CrimsonText-Regular.ttf // mandatory
+font_size: 30                      // defaults to 20 if missing
+color: 255;255;255                 // defaults to WHITE if missing
 --end--
 
 --picture_box--
 name: frame1
 texture_name: big_frame.png // mandatory
 size: 1200;782              // mandatory
-//center_position: 0;0      // middle of screen is 0;0, defaults to 0;0 if missing, but dock_with (and offset) will override
-draw_order: 0               // defaults to 0 if missing
+//center_position: 0;0      // middle of screen is 0;0, defaults to 0;0 if missing, but dock_with will override
+draw_order: 0               // optional, defaults to 0 if missing
 dock_with: screen.top_left<->this.top_left
 offset: 10;-80
 --end--
@@ -76,15 +95,15 @@ offset: 0;-1
 
 --button--
 name: close_button
-texture_name_normal: close_button_n.png
-texture_name_hover: close_button_h.png
-texture_name_active: close_button_a.png
-texture_name_disabled: close_button_n.png
-on_click_sound: audio/mouse_click_1.mp3
-size: 43;44
-//bounding_box: 0;0;43;44
-bounding_circle: 0;0;20
-draw_order: 0.2
+texture_name_normal: close_button_n.png   // mandatory
+texture_name_hover: close_button_h.png    // optional, will use texture_name_normal if missing
+texture_name_active: close_button_a.png   // optional, will use texture_name_normal if missing
+texture_name_disabled: close_button_n.png // optional, will use texture_name_normal if missing
+on_click_sound: audio/mouse_click_1.mp3   // optional, will play no sound on click if missing
+size: 43;44                               // mandatory
+bounding_box: 0;0;43;44                   // optional, will use size of texture if missing
+bounding_circle: 0;0;20                   // optional, will use bounding_box if missing
+draw_order: 0.2                           // defaults to 0 if missing
 dock_with: heading.top_right<->this.top_right
 offset: -7;-7
 --end--
@@ -100,11 +119,13 @@ color: BLUE
 --end--
 
 --label--
-name: label3
-size: 200;50
-text_string: Test1
-font_size: 50
-color: CYAN
+name: label1
+size: 200;50                       // mandatory
+text_string: FPS:                  // mandatory
+font_name: CrimsonText-Regular.ttf // optional, will use global_settings if missing
+font_size: 50                      // optional, will use global_settings if missing
+color: CYAN                        // optional, will use global_settings if missing
+static_text: false                 // optional, defaults to true if missing
 dock_with: panel_inner.top_left<->this.top_left
 offset: 15;-15
 --end--

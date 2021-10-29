@@ -211,6 +211,8 @@ pub struct ButtonClicked;
 
 pub struct DestroyControl;
 
+pub struct TextChanges;
+
 pub struct GergControl {
     pub group_name: String
 }

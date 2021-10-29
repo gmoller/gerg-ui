@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use plugin::{ButtonState, GergButton, GergControl, GergLabel, GergPictureBox};
 
 use crate::colors::parse_color;
+use crate::plugin::TextChanges;
 
 mod colors;
 pub mod plugin;
@@ -150,6 +151,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 control.fields.insert("font_name".to_string(), global_settings.font_name.clone());
                 control.fields.insert("font_size".to_string(), global_settings.font_size.clone());
                 control.fields.insert("text_string".to_string(), "".to_string());
+                control.fields.insert("static_text".to_string(), "true".to_string());
             },
             "--button--" => {
                 read_state = ReadState::Control;
@@ -248,6 +250,7 @@ fn spawn_picture_box(top_left_position: Vec2, size: Vec2, control: &Control, ass
     let scale = Vec3::new(1.0, 1.0, 1.0);
     let texture_name = control.fields.get_by_name("texture_name");
     let color_material_handle = get_color_material_handle(texture_name, asset_server, control, materials);
+
     let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle, true);
     let entity = commands
         .spawn_bundle(bundle)
@@ -265,12 +268,23 @@ fn spawn_label(top_left_position: Vec2, screen_size: Vec2, control: &Control, as
     let font_handle: Handle<Font> = asset_server.load(format!("fonts/{}", control.fields.get_by_name("font_name")).as_str());
     let font_size = parse_f32(control.fields.get_by_name("font_size"));
     let color = to_bevy_color(parse_color(control.fields.get_by_name("color")));
+    let static_text = parse_bool(control.fields.get_by_name("static_text"));
+
     let bundle = instantiate_textbundle(top_left_position, min_size, size, text, font_handle, font_size, color);
-    let entity = commands
-        .spawn_bundle(bundle)
-        .insert(GergLabel { name: control.fields.get_by_name("name").clone() })
-        .insert(GergControl { group_name: control_group_name.clone() })
-        .id();
+    let entity = if static_text {
+        commands
+            .spawn_bundle(bundle)
+            .insert(GergLabel { name: control.fields.get_by_name("name").clone() })
+            .insert(GergControl { group_name: control_group_name.clone() })
+            .id()
+    } else {
+        commands
+            .spawn_bundle(bundle)
+            .insert(GergLabel { name: control.fields.get_by_name("name").clone() })
+            .insert(GergControl { group_name: control_group_name.clone() })
+            .insert(TextChanges)
+            .id()
+    };
 
     entity
 }
@@ -298,6 +312,7 @@ fn spawn_button(top_left_position: Vec2, size: Vec2, control: &Control, asset_se
     let color_material_handle_active = get_color_material_handle(texture_name_active, asset_server, control, materials);
     let color_material_handle_disabled = get_color_material_handle(texture_name_disabled, asset_server, control, materials);
     let on_click_sound = control.fields.get_by_name("on_click_sound");
+
     let bundle = instantiate_sprite_bundle(size, center_position, scale, color_material_handle_normal.clone(), true);
     let entity = commands
         .spawn_bundle(bundle)
@@ -507,6 +522,16 @@ fn parse_vec4(s: &String) -> Vec4 {
         let result = Vec4::new(value1.parse::<f32>().unwrap(), value2.parse::<f32>().unwrap(), value3.parse::<f32>().unwrap(), value4.parse::<f32>().unwrap());
 
         result
+    };
+
+    result
+}
+
+fn parse_bool(s: &String) -> bool {
+    let result = if s.trim().to_lowercase() == "true" {
+        true
+    } else {
+        false
     };
 
     result
