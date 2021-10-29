@@ -125,7 +125,7 @@ text_string: FPS:                  // mandatory
 font_name: CrimsonText-Regular.ttf // optional, will use global_settings if missing
 font_size: 50                      // optional, will use global_settings if missing
 color: CYAN                        // optional, will use global_settings if missing
-static_text: false                 // optional, defaults to true if missing
+static_text: false                 // optional, defaults to false if missing
 dock_with: panel_inner.top_left<->this.top_left
 offset: 15;-15
 --end--

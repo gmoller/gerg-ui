@@ -151,7 +151,7 @@ pub fn instantiate_controls(lines: Vec<String>) -> Controls {
                 control.fields.insert("font_name".to_string(), global_settings.font_name.clone());
                 control.fields.insert("font_size".to_string(), global_settings.font_size.clone());
                 control.fields.insert("text_string".to_string(), "".to_string());
-                control.fields.insert("static_text".to_string(), "true".to_string());
+                control.fields.insert("static_text".to_string(), "false".to_string());
             },
             "--button--" => {
                 read_state = ReadState::Control;
