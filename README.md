@@ -130,3 +130,7 @@ dock_with: panel_inner.top_left<->this.top_left
 offset: 15;-15
 --end--
 ```
+
+Please feel free to drop me a line at greg.moller@gmail.com if you have any questions, or just want to let me know if anyone finds this helpful.
+I thought that creating UI controls with the BevyEngine seemed like a real hassle with loads of boiler-plate code, so I decided to put something
+together where I could declaratively define the UI screens I need.
